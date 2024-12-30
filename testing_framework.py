@@ -1,9 +1,10 @@
+from dataclasses import dataclass
 import os
 import random
 from abc import abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import List, Iterable, Tuple
+from typing import Any, List, Iterable, Tuple
 
 
 import seaborn as sns
@@ -117,30 +118,14 @@ def tune_hyperparameters(x_train, y_train):
     grid_search.fit(x_train, y_train)
     return grid_search.best_estimator_
 
-def plot_prediction_results(axes, sample_level_results:List, observation_level_results:List, test_number:int, sample_count:int):
-    if test_number ==0:
-        ax_sl = axes[0]
-        ax_ol = axes[1]
-    else:
-        ax_sl = axes[test_number*2]
-        ax_ol = axes[test_number*2+1]
+@dataclass
+class PredictionData:
+    x_train: Any #Dataframe
+    y_train: Any
+    x_test : Any
+    y_test : Any
+    y_predict : Any
 
-    ax_sl.scatter(x=sample_level_results[0], y=sample_level_results[1])
-    mse_sl = sklearn.metrics.mean_squared_error(sample_level_results[0], sample_level_results[1])
-    mape_sl = sklearn.metrics.mean_absolute_percentage_error(sample_level_results[0], sample_level_results[1])
-    ax_sl.set_xlabel('Actual values')
-    ax_sl.set_ylabel('Predicted values')
-    ax_sl.set_title(f'Test {test_number}, {sample_count} samples, sample-level splitting')
-    ax_sl.text(x=0.05, y=0.95,s=f'mse: {mse_sl:.2f} \nmape: {mape_sl:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_sl.transAxes)
-
-    ax_ol.scatter(x=observation_level_results[0], y=observation_level_results[1])
-    mse_ol = sklearn.metrics.mean_squared_error(observation_level_results[0], observation_level_results[1])
-    mape_ol = sklearn.metrics.mean_absolute_percentage_error(observation_level_results[0],
-                                                          observation_level_results[1])
-    ax_ol.set_xlabel('Actual values')
-    ax_ol.set_ylabel('Predicted values')
-    ax_ol.set_title(f'Test {test_number}, {sample_count} samples, observation-level splitting')
-    ax_ol.text(x=0.05, y=0.95,s=f'mse: {mse_ol:.2f} \nmape: {mape_ol:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_ol.transAxes)
 
 def predict(sample_observation_pairs:List[Tuple],splitting_strategy:SplittingStrategy, target_variable_name:str):
     variable_names,feature_names = get_variables_and_feature_names(sample_observation_pairs)
@@ -153,11 +138,31 @@ def predict(sample_observation_pairs:List[Tuple],splitting_strategy:SplittingStr
     number_of_samples = len(sample_observation_pairs[0][1])
     rf.fit(train_x,train_y)
     prediction_results = rf.predict(test_x)
-    return test_x, test_y, prediction_results
+    return PredictionData(train_x, train_y, test_x, test_y, prediction_results)
 
     plot_prediction_results(prediction_results, test_y, number_of_samples)
 
 
+def plot_prediction_results(axes, test_number:int, sample_count:int, sample_level_results:PredictionData, observation_level_results:PredictionData):
+    ax_sl = axes[test_number*2]
+    ax_ol = axes[test_number*2+1]
+
+    ax_sl.scatter(x=sample_level_results.y_test, y=sample_level_results.y_predict)
+    mse_sl = sklearn.metrics.mean_squared_error(sample_level_results.y_test, sample_level_results.y_predict)
+    mape_sl = sklearn.metrics.mean_absolute_percentage_error(sample_level_results.y_test, sample_level_results.y_predict)
+    ax_sl.set_xlabel('Actual values')
+    ax_sl.set_ylabel('Predicted values')
+    ax_sl.set_title(f'Test {test_number}, {sample_count} samples, sample-level splitting')
+    ax_sl.text(x=0.05, y=0.95,s=f'mse: {mse_sl:.2f} \nmape: {mape_sl:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_sl.transAxes)
+
+    ax_ol.scatter(x=observation_level_results.y_test, y=observation_level_results.y_predict)
+    mse_ol = sklearn.metrics.mean_squared_error(observation_level_results.y_test, observation_level_results.y_predict)
+    mape_ol = sklearn.metrics.mean_absolute_percentage_error(observation_level_results.y_test,
+                                                          observation_level_results.y_predict)
+    ax_ol.set_xlabel('Actual values')
+    ax_ol.set_ylabel('Predicted values')
+    ax_ol.set_title(f'Test {test_number}, {sample_count} samples, observation-level splitting')
+    ax_ol.text(x=0.05, y=0.95,s=f'mse: {mse_ol:.2f} \nmape: {mape_ol:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_ol.transAxes)
 
 
 
