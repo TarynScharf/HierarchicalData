@@ -40,7 +40,7 @@ class AbstractSampler[Sample, Analysis]:
         samples = self._generate_samples(number_of_samples)
         for sample in samples:
             variance = int(average_number_of_observations_per_sample/4)
-            number_of_observations = random.randint(-variance,variance ) + average_number_of_observations_per_sample
+            number_of_observations = max(1, random.randint(-variance,variance ) + average_number_of_observations_per_sample)
             observations = self._generate_observations(sample, number_of_observations)
             sample_observation_pairs.append((sample,observations))
         return sample_observation_pairs
@@ -87,9 +87,9 @@ def train_test_split(sample_observation_pairs:List[Tuple], splitting_strategy:Sp
         case SplittingStrategy.OBSERVATION_LEVEL:
             df_data = generate_sample_observation_dataframe(sample_observation_pairs)
             split_index = int(df_data.shape[0] * 0.2)
-            df_data.sample(frac=1).reset_index(drop=True)
-            test = df_data.iloc[:split_index,:]
-            train = df_data.iloc[split_index:,:]
+            shuffled_df_data = df_data.sample(frac=1).reset_index(drop=True)
+            test = shuffled_df_data.iloc[:split_index,:]
+            train = shuffled_df_data.iloc[split_index:,:]
 
     return train,test
 
@@ -140,29 +140,31 @@ def predict(sample_observation_pairs:List[Tuple],splitting_strategy:SplittingStr
     prediction_results = rf.predict(test_x)
     return PredictionData(train_x, train_y, test_x, test_y, prediction_results)
 
-    plot_prediction_results(prediction_results, test_y, number_of_samples)
 
-
-def plot_prediction_results(axes, test_number:int, sample_count:int, sample_level_results:PredictionData, observation_level_results:PredictionData):
+def plot_prediction_results(
+        axes, 
+        test_number:int, 
+        sample_count:int, 
+        sample_level_results:PredictionData, 
+        observation_level_results:PredictionData
+    ):
     ax_sl = axes[test_number*2]
     ax_ol = axes[test_number*2+1]
 
-    ax_sl.scatter(x=sample_level_results.y_test, y=sample_level_results.y_predict)
-    mse_sl = sklearn.metrics.mean_squared_error(sample_level_results.y_test, sample_level_results.y_predict)
-    mape_sl = sklearn.metrics.mean_absolute_percentage_error(sample_level_results.y_test, sample_level_results.y_predict)
-    ax_sl.set_xlabel('Actual values')
-    ax_sl.set_ylabel('Predicted values')
-    ax_sl.set_title(f'Test {test_number}, {sample_count} samples, sample-level splitting')
-    ax_sl.text(x=0.05, y=0.95,s=f'mse: {mse_sl:.2f} \nmape: {mape_sl:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_sl.transAxes)
+    title = f'Test {test_number}, {sample_count} samples ,'
+    min_x = min(min(observation_level_results.y_test), min(sample_level_results.y_test))
+    max_x = max(max(observation_level_results.y_test), max(sample_level_results.y_test))
+    x_bounds = (0.9*min_x, max_x*1.1)
 
-    ax_ol.scatter(x=observation_level_results.y_test, y=observation_level_results.y_predict)
-    mse_ol = sklearn.metrics.mean_squared_error(observation_level_results.y_test, observation_level_results.y_predict)
-    mape_ol = sklearn.metrics.mean_absolute_percentage_error(observation_level_results.y_test,
-                                                          observation_level_results.y_predict)
-    ax_ol.set_xlabel('Actual values')
-    ax_ol.set_ylabel('Predicted values')
-    ax_ol.set_title(f'Test {test_number}, {sample_count} samples, observation-level splitting')
-    ax_ol.text(x=0.05, y=0.95,s=f'mse: {mse_ol:.2f} \nmape: {mape_ol:.2f}',horizontalalignment='left',verticalalignment='top',transform = ax_ol.transAxes)
+    plot_actual_vs_predicated(ax_sl, title + "sample-level splitting", x_bounds, sample_level_results)
+    plot_actual_vs_predicated(ax_ol, title + "observation-level splitting", x_bounds, observation_level_results)
 
-
-
+def plot_actual_vs_predicated(ax, title, x_bounds, predications:PredictionData):
+    ax.scatter(x=predications.y_test, y=predications.y_predict)
+    mse_sl = sklearn.metrics.mean_squared_error(predications.y_test, predications.y_predict)
+    mape_sl = sklearn.metrics.mean_absolute_percentage_error(predications.y_test, predications.y_predict)
+    ax.set_xlabel('Actual values')
+    ax.set_ylabel('Predicted values')
+    ax.set_title(title)
+    ax.set_xlim(x_bounds)
+    ax.text(x=0.05, y=0.95,s=f'mse: {mse_sl:.2f} \nmape: {mape_sl:.2f}',horizontalalignment='left',verticalalignment='top', transform=ax.transAxes)
