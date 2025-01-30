@@ -11,6 +11,9 @@ Test:
     Create multiple entities and test model performance with observation-level and entity-level data splitting.
     The test is repeated 100 times and the resultant MSE values are presented in box-plot format.
     In each iteration, the number of entities remains constant and the number of observations is increased.
+    This is a replicate of Test 2b but instead of predicting variable 1 we are predicting feature 2.
+    I.e. 3 features of an observation are used to predict the 2nd feature. 
+    This is a many-to-many relationship in the sense that the predictive value is not constant for multiple observations
 '''
 
 # Set up number of test iterations
@@ -21,9 +24,9 @@ increment_type = IncrementType.OBSERVATION
 number_of_observations_per_entity = 50
 intraclass_variability=1
 interclass_variability=1
-test_name = 'Test2b'
+test_name = 'Test4c'
 reporting = True
-target_variable = 'variable1'
+target_variable = 'variable2'
 
 # Create output folder each time the script is run
 results_folder,supporting_data_folder = create_output_subfolders(parent_folder='Outputs', name=test_name)

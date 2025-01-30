@@ -1,5 +1,7 @@
+from datetime import datetime, date
 
-from Utils import create_output_subfolders,execute_test, plot_subsampling_results,plot_scatterplots
+from Utils import create_output_subfolders, execute_test, plot_subsampling_results, lineplots_of_prediction_metrics, IncrementType, \
+    list_mse_and_mape_for_all_iterations
 
 '''
 Hypothesis: 
@@ -13,58 +15,68 @@ Test:
 '''
 
 # Set up number of test iterations
-number_of_test_iterations = 10
+number_of_test_iterations = 2
 number_of_entities_per_test = 100
-increment = 100
+increment = 50
+increment_type = IncrementType.ENTITY
 number_of_observations_per_entity = 50
-intraclass_variability=0
+intraclass_variability=1
 interclass_variability=1
+test_name = 'Test2a'
+reporting = True
+target_variable = 'variable1'
 
 # Create output folder each time the script is run
-results_folder,supporting_data_folder = create_output_subfolders(parent_folder='Outputs', name="Test2a")
+results_folder,supporting_data_folder = create_output_subfolders(parent_folder='Outputs', name=test_name)
 
 # Test subsampling strategies
-target_variable = 'variable1'
-list_sl_predictions, list_ol_predictions = execute_test(target_variable,
-                                                        number_of_test_iterations,
-                                                        number_of_entities_per_test,
-                                                        number_of_observations_per_entity,
-                                                        supporting_data_folder,
-                                                        intraclass_variability,
-                                                        interclass_variability,
-                                                        increment,
-                                                        True)
+list_mse_el,list_mse_el_5, list_mse_el_95, list_mse_ol,list_mse_ol_5, list_mse_ol_95, list_el_predictions, list_ol_predictions,list_data_for_plotting = execute_test(
+    target_variable,
+    number_of_test_iterations,
+    number_of_entities_per_test,
+    number_of_observations_per_entity,
+    supporting_data_folder,
+    intraclass_variability,
+    interclass_variability,
+    increment_type,
+    increment,
+    reporting
+)
+
+lineplots_of_prediction_metrics(
+    list_mse_el,
+    list_mse_el_5,
+    list_mse_el_95,
+    list_mse_ol,
+    list_mse_ol_5,
+    list_mse_ol_95,
+    number_of_entities_per_test,
+    number_of_observations_per_entity,
+    number_of_test_iterations,
+    interclass_variability,
+    intraclass_variability,
+    results_folder,
+    increment_type,
+    increment
+    )
+
 # Plot test results
-list_mse_el, list_mape_el, list_mse_ol, list_mape_ol = plot_subsampling_results(number_of_test_iterations,
-                                                                                number_of_entities_per_test,
-                                                                                number_of_observations_per_entity,
-                                                                                increment,
-                                                                                list_sl_predictions,
-                                                                                list_ol_predictions,
-                                                                                results_folder,
-                                                                                increment,
-                                                                                True
-                                                                                )
+if reporting:
+    plot_subsampling_results(
+        number_of_test_iterations,
+        number_of_entities_per_test,
+        number_of_observations_per_entity,
+        interclass_variability,
+        intraclass_variability,
+        list_el_predictions,
+        list_ol_predictions,
+        supporting_data_folder,
+        increment_type,
+        increment
+    )
+
+print(f'Complete.')
 
 
-plot_scatterplots(list_mse_el,
-                  list_mape_el,
-                  list_mse_ol,
-                  list_mape_ol,
-                  number_of_entities_per_test,
-                  number_of_observations_per_entity,
-                  number_of_test_iterations,
-                  results_folder,
-                  increment,
-                  True)
 
-print('Complete')
-# Plot pairplots of datasets for each test iteration
-# and the boxplots of datasets versus the target variable for each test iteration.
-#This is time-consuming and should be commented out if not needed
-'''for i in range(len(list_data_for_plotting)):
-    data_pairplot(list_data_for_plotting[i], i, False, supporting_data_folder)
-    data_boxplots(list_data_for_plotting[i], target_variable, i, False,supporting_data_folder)
-
-plt.close('all')'''
 

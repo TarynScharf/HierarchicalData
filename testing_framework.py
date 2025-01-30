@@ -5,6 +5,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, List, Iterable, Tuple
 import pandas as pd
+import sklearn
 from sklearn.ensemble import RandomForestRegressor
 
 class AbstractSampler[AbstractInitialConditions, AbstractObservation]:
@@ -79,15 +80,21 @@ def train_test_split(entity_observation_pairs:List[Tuple], splitting_strategy:Sp
     return train,test
 
 def create_x_y(data_df:pd.DataFrame,feature_names:List[str],target_variable_name:str):
-    x = data_df.loc[:,feature_names]
+
     y=data_df.loc[:,target_variable_name]
+
+    if target_variable_name not in feature_names:
+        x = data_df.loc[:, feature_names]
+    else:
+        updated_feature_names = [feature for feature in feature_names if feature is not target_variable_name]
+        x = data_df.loc[:, updated_feature_names]
     return x,y
 
 @dataclass
 class PredictionData:
-    x_train: Any #Dataframe
-    y_train: Any
-    x_test : Any
+    #x_train: Any #Dataframe
+    #y_train: Any
+    #x_test : Any
     y_test : Any
     y_predict : Any
 
@@ -95,16 +102,24 @@ def predict(entity_observation_pairs:List[Tuple],
             splitting_strategy:SplittingStrategy,
             target_variable_name:str,
             test_number:int,
-            output_folder: str):
+            output_folder: str,
+            reporting = False
+            ):
     variable_names,feature_names = get_variables_and_feature_names(entity_observation_pairs)
     train,test = train_test_split(entity_observation_pairs,splitting_strategy)
     train_x, train_y = create_x_y(train,feature_names,target_variable_name)
     test_x, test_y = create_x_y(test,feature_names,target_variable_name)
-    write_dataset(train,test,splitting_strategy, test_number,output_folder)
+
+    if reporting:
+        write_dataset(train,test,splitting_strategy, test_number,output_folder)
+
     rf = RandomForestRegressor(random_state=42)#RandomForestRegressor(max_depth=9, max_features=4, max_leaf_nodes=16,min_samples_leaf=5, random_state=42)
     rf.fit(train_x,train_y)
     prediction_results = rf.predict(test_x)
-    return PredictionData(train_x, train_y, test_x, test_y, prediction_results)
+    mse = sklearn.metrics.mean_squared_error(test_y, prediction_results)
+    mape = sklearn.metrics.mean_absolute_percentage_error(test_y, prediction_results)
+
+    return PredictionData(y_test = test_y,y_predict = prediction_results),mse, mape # PredictionData(train_x, train_y, test_x, test_y, prediction_results)
 
 def write_dataset(train_dataset, test_dataset,splitting_strategy,test_number, output_folder):
     test_description=None

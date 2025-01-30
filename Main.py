@@ -1,32 +1,34 @@
-from matplotlib import pyplot as plt
+print('Starting Test 1')
+import Test_1
 
-from fictitious_sampler import FictitiousSampler
-from testing_framework import visualise_data, predict,SplittingStrategy,plot_prediction_results
+print('Starting Test 2a')
+import Test_2a
 
-number_of_tests = 1
-fig, axs = plt.subplots(nrows=number_of_tests, ncols=2,sharey=True,figsize=(10,5))
-ax= axs.flatten()
+print('Starting Test 2b')
+import Test_2b
 
-for i in range(number_of_tests):
-    number_of_samples = 10
+print('Starting Test 3a')
+import Test_3a
 
-    sampler = FictitiousSampler(
-        intraclass_variability=1,
-        interclass_variability=1
-    )
+print('Starting Test 3b')
+import Test_3b
 
-    sample_observation_pairs = sampler.generate_sample_observation_pairs(
-        number_of_samples=number_of_samples,
-        average_number_of_observations_per_sample=5
-    )
+print('Starting Test 4a')
+import Test_4a
 
-    #visualise_data(sample_observation_pairs)
-    sl_predictions = predict(sample_observation_pairs,SplittingStrategy.SAMPLE_LEVEL,'variable1')
-    ol_predictions = predict(sample_observation_pairs,SplittingStrategy.OBSERVATION_LEVEL,'variable1')
+print('Starting Test 4b')
+import Test_4b
 
-    plot_prediction_results(ax, i, number_of_samples, sl_predictions, ol_predictions)
+print('Starting Test 4c')
+import Test_4c
 
-    number_of_samples += 100
-plt.tight_layout()
-plt.show()
-print('complete')
+print('Starting Test 4d')
+import Test_4d
+
+print('Starting Test 4e')
+import Test_4e
+
+print('All tests complete')
+
+
+
