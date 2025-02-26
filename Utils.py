@@ -5,9 +5,11 @@ from enum import Enum
 from typing import Tuple, List
 import numpy as np
 import pandas as pd
+import scipy.stats
 import sklearn
 from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib.ticker import FormatStrFormatter
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
@@ -23,9 +25,11 @@ class IncrementType(Enum):
     OBSERVATION = 2
     INTRASAMPLE_VARIANCE = 3
     INTERSAMPLE_VARIANCE = 4
-    NONE = 5
+    COEFFICIENT = 5
+    NONE = 6
 
-def create_output_subfolders(parent_folder:str, name: str):
+
+def create_output_subfolders(script_parameters,parent_folder:str, name: str):
     now = datetime.now()
     formatted_datetime = now.strftime("%Y%m%d%H%M%S")
     output_folder = os.path.join(os.path.dirname(__file__), parent_folder)
@@ -36,6 +40,9 @@ def create_output_subfolders(parent_folder:str, name: str):
         os.makedirs(Test_run_folder)
         os.makedirs(supporting_data_folder)
         os.makedirs(results_folder)
+
+    inputs_df = pd.DataFrame(script_parameters)
+    inputs_df.to_excel(os.path.join(results_folder, 'readme.xlsx'))
 
     return results_folder,supporting_data_folder
 
@@ -51,6 +58,7 @@ def lineplots_of_prediction_metrics(
     number_of_test_iterations,
     interclass_variability,
     intraclass_variability,
+    coefficient,
     output_folder,
     increment_type,
     increment
@@ -59,29 +67,19 @@ def lineplots_of_prediction_metrics(
         if increment is not None:
             match increment_type:
                 case IncrementType.ENTITY:
-                    number_per_iteration = np.arange(
-                        number_of_entities,
-                        number_of_entities +  number_of_test_iterations * increment,
-                        increment
-                    )
+                    number_per_iteration = number_of_entities + np.arange(number_of_test_iterations) * increment
 
                 case IncrementType.OBSERVATION:
-                    number_per_iteration = np.arange(
-                        number_of_observations,
-                        number_of_observations + number_of_test_iterations * increment,
-                        increment)
+                    number_per_iteration = number_of_observations +np.arange(number_of_test_iterations)*increment
 
                 case IncrementType.INTERSAMPLE_VARIANCE:
-                    number_per_iteration = np.arange(
-                        interclass_variability,
-                        interclass_variability + number_of_test_iterations * increment,
-                        increment)
+                    number_per_iteration = interclass_variability +np.arange(number_of_test_iterations)*increment
 
                 case IncrementType.INTRASAMPLE_VARIANCE:
-                    number_per_iteration = np.arange(
-                        intraclass_variability,
-                        intraclass_variability + number_of_test_iterations * increment,
-                        increment)
+                    number_per_iteration = intraclass_variability +np.arange(number_of_test_iterations)*increment
+
+                case IncrementType.COEFFICIENT:
+                    number_per_iteration = coefficient + np.arange(number_of_test_iterations) * increment
 
                 case IncrementType.NONE:
                     print('No incremental data to plot')
@@ -97,33 +95,54 @@ def lineplots_of_prediction_metrics(
 
         })
 
-        plt.figure(figsize=(20, 5))
-        plt.plot(number_per_iteration, list_mse_el, color='red',ls = '-',marker = 'o', alpha=0.7, label='Entity-level MSE')
-        plt.plot(number_per_iteration, list_mse_el_5, color='red',ls = '--',marker = 'o', alpha=0.7, label='Entity-level MSE 5th')
-        plt.plot(number_per_iteration, list_mse_el_95, color='red',linestyle = ':',marker = 'o', alpha=0.7, label='Entity-level MSE 95th')
-
-        plt.plot(number_per_iteration, list_mse_ol, color='blue', alpha=0.7,marker = 'o', label='Observation-level MSE')
-        plt.plot(number_per_iteration, list_mse_ol_5, color='blue',ls = '--',marker = 'o', alpha=0.7, label='Observation-level MSE 5th')
-        plt.plot(number_per_iteration, list_mse_ol_95, color='blue',ls = ':',marker = 'o', alpha=0.7, label='Observation-level MSE 95th ')
-
-        plt.title(f'MSE comparison')
-        plt.xlabel(f'{increment_type.name.lower()} count')
-        plt.legend()
-
-        #axes[1].plot(number_per_iteration, list_mape_el, color='red', alpha=0.7,label='Entity-level MAPE')
-        #axes[1].plot(number_per_iteration, list_mape_ol, color='blue', alpha=0.7,label='Observation-level MAPE')
-        #axes[1].set_title(f'MAPE comparison')
-        #axes[1].set_xlabel(f'{increment_type.name.lower()} count')
-        #axes[1].legend()
-
-        file_path_mse_scatter = os.path.join(output_folder, f'mse_scatterplots.svg')
-        plt.savefig(file_path_mse_scatter, dpi=300, bbox_inches="tight")
-        plt.close('all')
-
+        df_results['mse_diff'] = abs(df_results['entity_mse'] - df_results['observation_mse'])
         with pd.ExcelWriter(os.path.join(output_folder, 'mse_results.xlsx'), engine='openpyxl') as writer:
             df_results.to_excel(writer, sheet_name='MSE_RESULTS', index=False)
 
+        width = 18.2/2.54 #converting cm to inches because matplotlib takes dimensions in inches
+        height = 5/2.54 #converting cm to inches
+        fig,ax1 = plt.subplots(1,1,figsize=(width,height))
+        plt.rcParams.update({'font.family': 'Arial', 'font.size': 10, 'pdf.fonttype':42, 'axes.linewidth':1})
 
+        red_line = (206/255, 61/255, 48/255,0.9) #rgba
+        red_envelope = (242/255, 71/255, 56/255,0.6)
+        red_marker_fill = (242/255, 143/255, 107/255,1.0)
+
+        blue_line = (29/255, 66/255, 115/255, 0.9)
+        blue_envelope = (4/255, 196/255, 217/255,0.6)
+        blue_marker_fill = (4/255, 196/255, 217/255,1.0)
+        purple_line = (114/255, 62/255, 152/255, 1.0)
+
+        line_graph_width = 1.0
+        thin_line_width = 0.5
+        marker_size = 3
+
+        ax1.fill_between(number_per_iteration,list_mse_el_5,list_mse_el_95, color=red_envelope, linewidth = thin_line_width)
+        ln_entities = ax1.plot(number_per_iteration, list_mse_el, color=red_line,ls = '-',linewidth = line_graph_width,marker = 'o',markeredgecolor=red_line,markeredgewidth = thin_line_width,markerfacecolor=red_marker_fill,markersize=marker_size,  label='Entity-split')
+
+        ax1.fill_between(number_per_iteration, list_mse_ol_5, list_mse_ol_95, color='white', alpha=0.6, linewidth = thin_line_width)
+        ax1.fill_between(number_per_iteration, list_mse_ol_5, list_mse_ol_95, color=blue_envelope,linewidth = thin_line_width)
+        ln_observations = ax1.plot(number_per_iteration, list_mse_ol, color=blue_line,linewidth = line_graph_width, marker = 'o',markeredgecolor=blue_line,markeredgewidth = thin_line_width, markerfacecolor=blue_marker_fill,markersize=marker_size, label='Observation-split')
+
+        ax2 = ax1.twinx()
+        ln_differences = ax2.plot(number_per_iteration, df_results['mse_diff'],linestyle='dashed',dashes=(2,2),linewidth = line_graph_width, color=purple_line,label='MSE difference')
+        ax2.set_ylabel('MSE difference', rotation=90)
+
+        lines = ln_entities +ln_observations+ln_differences
+        labels = [l.get_label() for l in lines]
+        plt.legend(lines,labels)
+
+        ax1.tick_params('both', length=3, width=1, which='major')
+        ax2.tick_params('both', length=3, width=1, which='major')
+
+        plt.title(f'')
+        ax1.set_ylabel('Mean squared error')
+        ax1.set_xlabel(f'{increment_type.name.capitalize()} count')
+
+        plt.tight_layout(pad=0.5)
+        file_path_mse_scatter = os.path.join(output_folder, f'mse_scatterplots.pdf')
+        plt.savefig(file_path_mse_scatter, dpi=500)
+        plt.close('all')
 
 def plot_differences(
     list_mse_el,
@@ -191,6 +210,7 @@ def plot_differences(
 
 def plot_boxplots_of_subsampling_results(list_mse_el,
                                          list_mse_ol,
+                                         number_of_test_iterations,
                                          output_folder):
 
     # Create the final output boxplot that shows how mse and mape vary across all test iterations
@@ -198,15 +218,55 @@ def plot_boxplots_of_subsampling_results(list_mse_el,
         'entity_mse': list_mse_el,
         'observation_mse': list_mse_ol,
     })
-    plt.figure(figsize=(8, 6))
-
-    ax_mse_boxplot = df_results.boxplot(figsize=(8, 6), showfliers=False)
-    ax_mse_boxplot.set_title("Test results over iterations")
-    file_path_mse_boxplots = os.path.join(output_folder, f'mse_boxplots.svg')
 
     with pd.ExcelWriter(os.path.join(output_folder, 'mse_results.xlsx'), engine='openpyxl') as writer:
         df_results.to_excel(writer, sheet_name='MSE_RESULTS', index=False)
-    plt.savefig(file_path_mse_boxplots, dpi=300, bbox_inches="tight")
+
+    plt.rcParams.update({'font.family': 'Arial', 'font.size': 10, 'pdf.fonttype': 42, 'axes.linewidth': 1})
+    width = 5/2.54 #converting cm to inches because matplotlib takes dimensions in inches
+    height = 4/2.54 #converting cm to inches
+    positions=[-0.5,0.2]
+
+    fig = plt.figure(figsize=(width, height))
+    ax_mse_boxplot = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+    #ax_mse_boxplot.set_position([0.1, 0.1, 0.9, 0.9])
+    ymin = df_results.values.min()
+    ymax = df_results.values.max()
+    ax_mse_boxplot.set_ylim(ymin-0.1, ymax+0.1)
+    ax_mse_boxplot.set_xlim(-1,3)
+    df_results.boxplot(positions=positions, showfliers=False,grid=False, patch_artist=True,widths=0.3, ax=ax_mse_boxplot)
+
+    colours=[(242/255, 71/255, 56/255),(4/255, 196/255, 217/255)]
+    for i, box in enumerate(ax_mse_boxplot.patches):
+        box.set_facecolor(colours[i])
+        box.set_edgecolor('black')
+        box.set_linewidth(1)
+
+    for line in ax_mse_boxplot.lines:
+        line.set_color('black')
+        line.set_linewidth(1)
+
+    ks_results = scipy.stats.ks_2samp(df_results['entity_mse'], df_results['observation_mse'])
+    ks_stat = "{:.1f}".format(ks_results.statistic)
+    p_val = "{:.1e}".format(ks_results.pvalue)
+    ax_mse_boxplot.text(0.5, 0.95, f'KS: {ks_stat} \n p: {p_val}',
+            horizontalalignment='center',
+            verticalalignment='top',
+            transform=ax_mse_boxplot.transAxes)
+
+    ax_mse_boxplot.set_title(f"")
+    ax_mse_boxplot.tick_params(axis='y', length=3, width=1)
+    ax_mse_boxplot.tick_params(left=False, right=True, labelright=True, labelleft=False, bottom=False,
+                               labelbottom=False, direction='in', pad=-20)
+    ax_mse_boxplot.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    ax_mse_boxplot.text(0.8, 0.5, 'Mean squared error', transform=ax_mse_boxplot.transAxes,
+            rotation=90, verticalalignment='center', horizontalalignment='right', fontsize=10)
+
+
+    file_path_mse_boxplots = os.path.join(output_folder, f'mse_boxplots.pdf')
+    #plt.tight_layout(pad=0)
+    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+    plt.savefig(file_path_mse_boxplots, dpi=300,bbox_inches="tight", pad_inches=0.01)
     plt.close('all')
 
 def return_mse_and_mape(test, predict):
@@ -237,6 +297,7 @@ def plot_prediction_results(
         number_of_observations_per_entity: int,
         interclass_variability: float,
         intraclass_variability: float,
+        coefficient: float,
         entity_level_results:PredictionData,
         observation_level_results:PredictionData
     ):
@@ -244,14 +305,13 @@ def plot_prediction_results(
     ax_sl = list_of_plot_axes[test_number * 2]
     ax_ol = list_of_plot_axes[test_number * 2 + 1]
 
-    title = f'Test {test_number+1}, {entity_count} ent, {number_of_observations_per_entity} obs, {interclass_variability} inter_v, {intraclass_variability} intra_v'
+    title = f'Test {test_number+1}, {entity_count} ent, {number_of_observations_per_entity} obs, {interclass_variability} inter_v, {intraclass_variability} intra_v, {coefficient} coef'
     min_x = min(min(observation_level_results.y_test), min(entity_level_results.y_test))
     max_x = max(max(observation_level_results.y_test), max(entity_level_results.y_test))
     x_bounds = (0.9*min_x, max_x*1.1)
 
     plot_actual_vs_predicted(ax_sl, title + ", entity splitting", x_bounds, entity_level_results)
     plot_actual_vs_predicted(ax_ol, title + ", observation splitting", x_bounds, observation_level_results)
-
 
 def list_mse_and_mape_for_all_iterations(
     list_el_predictions,
@@ -272,13 +332,13 @@ def list_mse_and_mape_for_all_iterations(
 
     return list_mse_el, list_mse_ol, list_mape_el, list_mape_ol
 
-
 def plot_subsampling_results(
         number_of_test_iterations,
         number_of_entities,
         number_of_observations_per_entity,
         interclass_variability,
         intraclass_variability,
+        coefficient,
         list_sl_predictions,
         list_ol_predictions,
         results_folder,
@@ -301,6 +361,7 @@ def plot_subsampling_results(
             number_of_observations_per_entity,
             interclass_variability,
             intraclass_variability,
+            coefficient,
             list_sl_predictions[i],
             list_ol_predictions[i]
         )
@@ -318,6 +379,10 @@ def plot_subsampling_results(
 
                 case IncrementType.INTRASAMPLE_VARIANCE:
                     intraclass_variability += increment
+
+                case IncrementType.INTRASAMPLE_VARIANCE:
+                    coefficient += increment
+
 
                 case IncrementType.NONE:
                     continue
@@ -378,17 +443,35 @@ def data_boxplots(entity_observation_pairs: List[Tuple],
 
     plt.close()
 
+def data_creation_and_prediction(intraclass_variability,interclass_variability,number_of_entities,
+                                 number_of_observations_per_entity,target_variable,iteration,supporting_data_folder,reporting):
+    sampler = FictitiousSamplerPredictive(
+                intraclass_variability=intraclass_variability,
+                interclass_variability=interclass_variability)
+
+    entity_observation_pairs = sampler.generate_entity_observation_pairs(
+        number_of_entities=number_of_entities,
+        average_number_of_observations_per_entity=number_of_observations_per_entity
+            )
+
+    el_predictions, mse_el, mape_el = predict(entity_observation_pairs,SplittingStrategy.ENTITY_LEVEL,target_variable,iteration, supporting_data_folder,reporting)
+    ol_predictions, mse_ol, mape_ol = predict(entity_observation_pairs,SplittingStrategy.OBSERVATION_LEVEL,target_variable,iteration,supporting_data_folder,reporting)
+
+    return el_predictions,mse_el,ol_predictions,mse_ol,entity_observation_pairs,entity_observation_pairs
+
 def execute_test(
         target_variable,
         number_of_test_iterations,
         number_of_entities,
         number_of_observations_per_entity,
+        feature_coefficient,
         supporting_data_folder,
         intraclass_variability,
         interclass_variability,
         increment_type,
         increment = None,
-        reporting = False
+        reporting = False,
+        runs_per_iteration=10
 ):
 
     list_sl_predictions = []
@@ -401,8 +484,6 @@ def execute_test(
     ave_mse_ol = []
     ave_mse_ol_5 = []
     ave_mse_ol_95 = []
-    #ave_mape_el = []
-    #ave_mape_ol = []
 
     for i in range(number_of_test_iterations):
         print (f"Test iteration {i+1} proceeding...")
@@ -410,10 +491,8 @@ def execute_test(
         # Each iteration will be repeated 10 times and the mse and mape value averaged
         list_mse_el=[]
         list_mse_ol=[]
-        #list_mape_el=[]
-        #list_mape_ol=[]
 
-        for j in range(10): # tqdm(range(10), desc='Executing...'):
+        for j in range(runs_per_iteration): # tqdm(range(10), desc='Executing...'):
 
             sampler = FictitiousSamplerPredictive(
                 intraclass_variability=intraclass_variability,
@@ -422,12 +501,13 @@ def execute_test(
 
             entity_observation_pairs = sampler.generate_entity_observation_pairs(
                 number_of_entities=number_of_entities,
-                average_number_of_observations_per_entity=number_of_observations_per_entity
+                average_number_of_observations_per_entity=number_of_observations_per_entity,
+                coefficient = feature_coefficient
             )
 
             el_predictions, mse_el, mape_el = predict(entity_observation_pairs,SplittingStrategy.ENTITY_LEVEL,target_variable,i, supporting_data_folder,reporting)
             ol_predictions, mse_ol, mape_ol = predict(entity_observation_pairs,SplittingStrategy.OBSERVATION_LEVEL,target_variable,i,supporting_data_folder,reporting)
-
+            
             if reporting and j==0:
                 #Save the iteration's data for plotting pairplots and dataset boxplots (optional)
                 #Save only the first dataset produced, as an example to visualise in plotting, as the iteration is repeated 10 times
@@ -437,8 +517,6 @@ def execute_test(
 
             list_mse_el.append(mse_el)
             list_mse_ol.append(mse_ol)
-            #list_mape_el.append(mape_el)
-            #list_mape_ol.append(mape_ol)
 
         ave_mse_el.append(statistics.mean(list_mse_el))
         ave_mse_el_5.append(np.percentile(list_mse_el,5))
@@ -446,8 +524,6 @@ def execute_test(
         ave_mse_ol.append(statistics.mean(list_mse_ol))
         ave_mse_ol_5.append(np.percentile(list_mse_ol, 5))
         ave_mse_ol_95.append(np.percentile(list_mse_ol, 95))
-        #ave_mape_el.append(statistics.mean(list_mape_el))
-        #ave_mape_ol.append(statistics.mean(list_mape_ol))
 
         if increment is not None:
             match increment_type:
@@ -463,15 +539,17 @@ def execute_test(
                 case IncrementType.INTRASAMPLE_VARIANCE:
                     intraclass_variability += increment
 
+                case IncrementType.COEFFICIENT:
+                    feature_coefficient += increment
+
                 case IncrementType.NONE:
                     continue
 
     if reporting:
         return ave_mse_el,ave_mse_el_5, ave_mse_el_95, ave_mse_ol,ave_mse_ol_5, ave_mse_ol_95, list_sl_predictions,list_ol_predictions,list_data_for_plotting
-        #return ave_mse_el,ave_mse_ol, ave_mape_el, ave_mape_ol,list_sl_predictions,list_ol_predictions,list_data_for_plotting
     else:
         return ave_mse_el,ave_mse_el_5, ave_mse_el_95, ave_mse_ol,ave_mse_ol_5, ave_mse_ol_95, None, None, None
-        #return ave_mse_el,ave_mse_ol, ave_mape_el, ave_mape_ol, None, None, None
+
 
 def tune_hyperparameters(x_train, y_train):
     max_depth = [int(x) for x in range(2, 20)]

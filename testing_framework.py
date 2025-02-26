@@ -25,14 +25,14 @@ class AbstractSampler[AbstractInitialConditions, AbstractObservation]:
         '''
         pass
 
-    def generate_entity_observation_pairs(self, number_of_entities, average_number_of_observations_per_entity):
+    def generate_entity_observation_pairs(self, number_of_entities, average_number_of_observations_per_entity,coefficient):
         sample_observation_pairs =[]
 
         samples = self._sample_the_initial_conditions(number_of_entities)
         for sample in samples:
             variance = int(average_number_of_observations_per_entity / 4)
             number_of_observations = max(1, random.randint(-variance,variance ) + average_number_of_observations_per_entity)
-            observations = self._sample_the_observations(sample, number_of_observations)
+            observations = self._sample_the_observations(sample, number_of_observations, coefficient)
             sample_observation_pairs.append((sample,observations))
         return sample_observation_pairs
 
@@ -117,7 +117,7 @@ def predict(entity_observation_pairs:List[Tuple],
     rf.fit(train_x,train_y)
     prediction_results = rf.predict(test_x)
     mse = sklearn.metrics.mean_squared_error(test_y, prediction_results)
-    mape = sklearn.metrics.mean_absolute_percentage_error(test_y, prediction_results)
+    mape = None #sklearn.metrics.mean_absolute_percentage_error(test_y, prediction_results)
 
     return PredictionData(y_test = test_y,y_predict = prediction_results),mse, mape # PredictionData(train_x, train_y, test_x, test_y, prediction_results)
 
