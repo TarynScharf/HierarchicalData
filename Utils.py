@@ -17,6 +17,7 @@ from sympy.logic.boolalg import Boolean
 from tqdm import tqdm
 
 from fictitious_sampler_predictive import FictitiousSamplerPredictive
+from fictitious_sample_simple import FictitiousSamplerSimple
 from testing_framework import generate_entity_observation_dataframe, SplittingStrategy, predict, PredictionData
 
 
@@ -229,13 +230,13 @@ def plot_boxplots_of_subsampling_results(list_mse_el,
 
     fig = plt.figure(figsize=(width, height))
     ax_mse_boxplot = fig.add_axes([0.1, 0.1, 0.8, 0.8])
-    #ax_mse_boxplot.set_position([0.1, 0.1, 0.9, 0.9])
+    ax_mse_boxplot.set_position([0.1, 0.1, 0.9, 0.9])
     ymin = df_results.values.min()
     ymax = df_results.values.max()
+
     ax_mse_boxplot.set_ylim(ymin-0.1, ymax+0.1)
     ax_mse_boxplot.set_xlim(-1,3)
     df_results.boxplot(positions=positions, showfliers=False,grid=False, patch_artist=True,widths=0.3, ax=ax_mse_boxplot)
-
     colours=[(242/255, 71/255, 56/255),(4/255, 196/255, 217/255)]
     for i, box in enumerate(ax_mse_boxplot.patches):
         box.set_facecolor(colours[i])
@@ -255,13 +256,14 @@ def plot_boxplots_of_subsampling_results(list_mse_el,
             transform=ax_mse_boxplot.transAxes)
 
     ax_mse_boxplot.set_title(f"")
-    ax_mse_boxplot.tick_params(axis='y', length=3, width=1)
+    #ax_mse_boxplot.set_yscale('log')
+    ax_mse_boxplot.tick_params(axis='y', which = 'both', length=3, width=1)
     ax_mse_boxplot.tick_params(left=False, right=True, labelright=True, labelleft=False, bottom=False,
                                labelbottom=False, direction='in', pad=-20)
+    ax_mse_boxplot.get_yaxis().set_ticks_position("right")
     ax_mse_boxplot.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     ax_mse_boxplot.text(0.8, 0.5, 'Mean squared error', transform=ax_mse_boxplot.transAxes,
             rotation=90, verticalalignment='center', horizontalalignment='right', fontsize=10)
-
 
     file_path_mse_boxplots = os.path.join(output_folder, f'mse_boxplots.pdf')
     #plt.tight_layout(pad=0)
@@ -549,6 +551,99 @@ def execute_test(
         return ave_mse_el,ave_mse_el_5, ave_mse_el_95, ave_mse_ol,ave_mse_ol_5, ave_mse_ol_95, list_sl_predictions,list_ol_predictions,list_data_for_plotting
     else:
         return ave_mse_el,ave_mse_el_5, ave_mse_el_95, ave_mse_ol,ave_mse_ol_5, ave_mse_ol_95, None, None, None
+
+
+def execute_simple_test(
+        target_variable,
+        number_of_test_iterations,
+        number_of_entities,
+        number_of_observations_per_entity,
+        feature_coefficient,
+        supporting_data_folder,
+        intraclass_variability,
+        interclass_variability,
+        increment_type,
+        increment=None,
+        reporting=False,
+        runs_per_iteration=10
+):
+    list_sl_predictions = []
+    list_ol_predictions = []
+    list_data_for_plotting = []
+
+    ave_mse_el = []
+    ave_mse_el_5 = []
+    ave_mse_el_95 = []
+    ave_mse_ol = []
+    ave_mse_ol_5 = []
+    ave_mse_ol_95 = []
+
+    for i in range(number_of_test_iterations):
+        print(f"Test iteration {i + 1} proceeding...")
+
+        # Each iteration will be repeated a user-specified number of times and the mse and mape value averaged
+        list_mse_el = []
+        list_mse_ol = []
+
+        for j in range(runs_per_iteration):  # tqdm(range(10), desc='Executing...'):
+
+            sampler = FictitiousSamplerSimple(
+                intraclass_variability=intraclass_variability,
+                interclass_variability=interclass_variability
+            )
+
+            entity_observation_pairs = sampler.generate_entity_observation_pairs(
+                number_of_entities=number_of_entities,
+                average_number_of_observations_per_entity=number_of_observations_per_entity,
+                coefficient=feature_coefficient
+            )
+
+            el_predictions, mse_el, mape_el = predict(entity_observation_pairs, SplittingStrategy.ENTITY_LEVEL,
+                                                      target_variable, i, supporting_data_folder, reporting)
+            ol_predictions, mse_ol, mape_ol = predict(entity_observation_pairs, SplittingStrategy.OBSERVATION_LEVEL,
+                                                      target_variable, i, supporting_data_folder, reporting)
+
+            if reporting and j == 0:
+                # Save the iteration's data for plotting pairplots and dataset boxplots (optional)
+                # Save only the first dataset produced, as an example to visualise in plotting, as the iteration is repeated 10 times
+                list_data_for_plotting.append(entity_observation_pairs)
+                list_sl_predictions.append(el_predictions)
+                list_ol_predictions.append(ol_predictions)
+
+            list_mse_el.append(mse_el)
+            list_mse_ol.append(mse_ol)
+
+        ave_mse_el.append(statistics.mean(list_mse_el))
+        ave_mse_el_5.append(np.percentile(list_mse_el, 5))
+        ave_mse_el_95.append(np.percentile(list_mse_el, 95))
+        ave_mse_ol.append(statistics.mean(list_mse_ol))
+        ave_mse_ol_5.append(np.percentile(list_mse_ol, 5))
+        ave_mse_ol_95.append(np.percentile(list_mse_ol, 95))
+
+        if increment is not None:
+            match increment_type:
+                case IncrementType.ENTITY:
+                    number_of_entities += increment
+
+                case IncrementType.OBSERVATION:
+                    number_of_observations_per_entity += increment
+
+                case IncrementType.INTERSAMPLE_VARIANCE:
+                    interclass_variability += increment
+
+                case IncrementType.INTRASAMPLE_VARIANCE:
+                    intraclass_variability += increment
+
+                case IncrementType.COEFFICIENT:
+                    feature_coefficient += increment
+
+                case IncrementType.NONE:
+                    continue
+
+    if reporting:
+        return ave_mse_el, ave_mse_el_5, ave_mse_el_95, ave_mse_ol, ave_mse_ol_5, ave_mse_ol_95, list_sl_predictions, list_ol_predictions, list_data_for_plotting
+    else:
+        return ave_mse_el, ave_mse_el_5, ave_mse_el_95, ave_mse_ol, ave_mse_ol_5, ave_mse_ol_95, None, None, None
 
 
 def tune_hyperparameters(x_train, y_train):

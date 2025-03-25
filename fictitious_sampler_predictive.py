@@ -38,20 +38,20 @@ class FictitiousSamplerPredictive(AbstractSampler[InitialConditions, Observation
         It thus returns a sequence of randomly selected initial conditions, which correspond to "entities" in the geological sense.
         '''
         variable1_skewness = 5
-        variable1_scale = self.interclass_variability #*3
+        variable1_scale = self.interclass_variability
         variable1_centre = 10
         #sample from distribution
         variable1_samples = scipy.stats.skewnorm.rvs(variable1_skewness,variable1_centre,variable1_scale,number_of_samples)
 
-        variable2_skewness = 0.5
-        variable2_centre = 13
-        variable2_scale = self.interclass_variability # *4
+        variable2_skewness = 2
+        variable2_centre = 12
+        variable2_scale = self.interclass_variability
         # sample from distribution
         variable2_samples = scipy.stats.skewnorm.rvs(variable2_skewness,variable2_centre,variable2_scale,number_of_samples)
 
-        variable3_skewness = 0.3
-        variable3_centre = 7
-        variable3_scale = self.interclass_variability #*3
+        variable3_skewness = 1
+        variable3_centre = 8
+        variable3_scale = self.interclass_variability
         # sample from distribution
         variable3_samples = scipy.stats.skewnorm.rvs(variable3_skewness,variable3_centre,variable3_scale,number_of_samples)
 
@@ -71,19 +71,19 @@ class FictitiousSamplerPredictive(AbstractSampler[InitialConditions, Observation
         feature1_observations = scipy.stats.uniform.rvs(loc=1, scale=4, size=number_of_analyses)
 
         # A feature influenced by all 3 initial conditions
-        feature2 = (0.4 * (coefficient*conditions.variable1+conditions.variable2) + 0.3 * coefficient*conditions.variable1 + 48) + 0.1*(conditions.variable2 + conditions.variable3)
-        feature2_skewness = 12
+        feature2 = (0.5 * (conditions.variable1+conditions.variable2) + 0.4 * conditions.variable1 + 3.2) + 0.2*(conditions.variable2 + conditions.variable3)
+        feature2_skewness = 10
         feature2_noise = scipy.stats.skewnorm.rvs(loc=0, a=feature2_skewness,scale=self.intraclass_variability,size=number_of_analyses)
         feature2_observations =feature2 + feature2_noise
 
         # A feature derived from features 1 and 2
-        feature3_noise = scipy.stats.norm.rvs(loc=1.23,scale=self.intraclass_variability,size=number_of_analyses)
-        feature3_observations = 0.7 * coefficient*conditions.variable1 + 0.3 * conditions.variable2 + 0.13 * conditions.variable3 + feature3_noise
+        feature3_noise = scipy.stats.norm.rvs(loc=1,scale=self.intraclass_variability,size=number_of_analyses)
+        feature3_observations = 0.5 * conditions.variable1 + 0.3 * conditions.variable2 + 0.2 * conditions.variable3 + feature3_noise
 
         # A feature influenced by initial conditions (variables 1 and 3)
         feature4_skewness = 7
-        feature4_noise = scipy.stats.skewnorm.rvs(loc=2.45,a = feature4_skewness,scale = self.intraclass_variability,size = number_of_analyses)
-        feature4_observations = -feature1_observations - np.sqrt(np.abs(feature2_observations)) - feature3_observations + feature4_noise
+        feature4_noise = scipy.stats.skewnorm.rvs(loc=0.5,a = feature4_skewness,scale = self.intraclass_variability,size = number_of_analyses)
+        feature4_observations = feature1_observations + feature2_observations + feature3_observations + feature4_noise
 
         observations = [Observation(*values) for values in
                    zip(feature1_observations, feature2_observations, feature3_observations, feature4_observations)]
