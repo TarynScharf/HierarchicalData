@@ -17,18 +17,19 @@ Test:
 '''
 
 # Set up number of test iterations
-number_of_test_iterations = 15
+number_of_test_iterations = 50
 number_of_entities_per_test = 100
 increment = 50
 increment_type = IncrementType.OBSERVATION
 number_of_observations_per_entity = 50
 intraclass_variability=0.5
-interclass_variability=1
+interclass_variability=3
 coefficient=1
 runs_per_iteration= 100
 test_name = 'Test4c'
 reporting = False
-target_variable = 'variable2'
+target_variable = 'feature4'
+
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],

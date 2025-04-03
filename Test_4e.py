@@ -20,16 +20,16 @@ Test:
 # Set up number of test iterations
 number_of_test_iterations = 100
 number_of_entities_per_test = 100
-increment = 0.2
+increment = 0.5
 increment_type = IncrementType.INTERSAMPLE_VARIANCE
 number_of_observations_per_entity = 50
 intraclass_variability=0.5
-interclass_variability=0.2
+interclass_variability=0.5
 coefficient=1
 runs_per_iteration= 100
 test_name = 'Test4e'
 reporting = False
-target_variable = 'variable2'
+target_variable = 'feature4'
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],

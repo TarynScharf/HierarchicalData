@@ -14,14 +14,14 @@ Test:
 number_of_test_iterations = 1000 #as each iteration is performed 10 times and the results of average, for Test 1 this amounts to 10 * number_of_test_iterations
 number_of_entities_per_test = 100
 number_of_observations_per_entity = 50
-intraclass_variability=0.5
+intraclass_variability=15
 interclass_variability=3
 increment = None
 increment_type = IncrementType.NONE
 coefficient=1
 runs_per_iteration= 1
 test_name = 'Test1'
-reporting = False
+reporting = True
 target_variable = 'variable1'
 
 parameter_dict= {

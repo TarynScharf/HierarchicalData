@@ -14,18 +14,18 @@ Test:
 '''
 
 # Set up number of test iterations
-number_of_test_iterations = 100 #as each iteration is performed 10 times and the results of average, for Test 1 this amounts to 10 * number_of_test_iterations
+number_of_test_iterations = 1000 #as each iteration is performed 10 times and the results of average, for Test 1 this amounts to 10 * number_of_test_iterations
 number_of_entities_per_test = 100
 increment = None
 increment_type = IncrementType.NONE
 number_of_observations_per_entity = 50
 intraclass_variability=0.5
-interclass_variability=1
+interclass_variability=30
 coefficient=1
 runs_per_iteration= 1
 test_name = 'Test4a'
-reporting = False
-target_variable = 'variable2'
+reporting = True
+target_variable = 'feature4'
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],

@@ -17,7 +17,7 @@ from sympy.logic.boolalg import Boolean
 from tqdm import tqdm
 
 from fictitious_sampler_predictive import FictitiousSamplerPredictive
-from fictitious_sample_simple import FictitiousSamplerSimple
+#from fictitious_sample_simple import FictitiousSamplerSimple
 from testing_framework import generate_entity_observation_dataframe, SplittingStrategy, predict, PredictionData
 
 
