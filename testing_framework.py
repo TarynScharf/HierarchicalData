@@ -91,35 +91,46 @@ def create_x_y(data_df:pd.DataFrame,feature_names:List[str],target_variable_name
     return x,y
 
 @dataclass
-class PredictionData:
+class EvaluationResults:
     #x_train: Any #Dataframe
     #y_train: Any
     #x_test : Any
     y_test : Any
     y_predict : Any
+    mse: Any
+
+def train_model(feature_names, training_data, target_variable_name):
+    train_x, train_y = create_x_y(training_data, feature_names, target_variable_name)
+    rf = RandomForestRegressor(random_state=42)  # RandomForestRegressor(max_depth=9, max_features=4, max_leaf_nodes=16,min_samples_leaf=5, random_state=42)
+    rf.fit(train_x, train_y)
+    return rf
 
 def predict(entity_observation_pairs:List[Tuple],
             splitting_strategy:SplittingStrategy,
             target_variable_name:str,
             test_number:int,
             output_folder: str,
+            feature_names,
             reporting = False
             ):
-    variable_names,feature_names = get_variables_and_feature_names(entity_observation_pairs)
-    train,test = train_test_split(entity_observation_pairs,splitting_strategy)
-    train_x, train_y = create_x_y(train,feature_names,target_variable_name)
-    test_x, test_y = create_x_y(test,feature_names,target_variable_name)
+
+    train, test = train_test_split(entity_observation_pairs, splitting_strategy)
 
     if reporting:
         write_dataset(train,test,splitting_strategy, test_number,output_folder)
 
-    rf = RandomForestRegressor(random_state=42)#RandomForestRegressor(max_depth=9, max_features=4, max_leaf_nodes=16,min_samples_leaf=5, random_state=42)
-    rf.fit(train_x,train_y)
-    prediction_results = rf.predict(test_x)
-    mse = sklearn.metrics.mean_squared_error(test_y, prediction_results)
-    mape = None #sklearn.metrics.mean_absolute_percentage_error(test_y, prediction_results)
+    model = train_model(feature_names,train,target_variable_name)
 
-    return PredictionData(y_test = test_y,y_predict = prediction_results),mse, mape # PredictionData(train_x, train_y, test_x, test_y, prediction_results)
+    return evaluate_model(model, feature_names, target_variable_name, test), model
+
+def evaluate_model(model, feature_names, target_variable_name, dataset):
+    data_x, data_y = create_x_y(dataset, feature_names, target_variable_name)
+    prediction_results = model.predict(data_x)
+    mse = sklearn.metrics.mean_squared_error(data_y, prediction_results)
+
+    return EvaluationResults(y_test=data_y,
+                             y_predict=prediction_results,
+                             mse = mse)
 
 def write_dataset(train_dataset, test_dataset,splitting_strategy,test_number, output_folder):
     test_description=None

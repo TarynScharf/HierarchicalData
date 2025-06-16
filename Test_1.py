@@ -23,6 +23,7 @@ runs_per_iteration= 1
 test_name = 'Test1'
 reporting = True
 target_variable = 'variable1'
+hold_out_data = True
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],
@@ -36,14 +37,15 @@ parameter_dict= {
     'runs_per_iteration':[runs_per_iteration],
     'test_name': [test_name],
     'reporting': [reporting],
-    'target_variable': [target_variable]
+    'target_variable': [target_variable],
+    'hold_out_data':[hold_out_data]
 }
 
 # Create output folder each time the script is run
 results_folder,supporting_data_folder = create_output_subfolders(parameter_dict,parent_folder='Outputs', name = test_name)
 
 # Test subsampling strategies
-list_mse_el,list_mse_el_5, list_mse_el_95, list_mse_ol,list_mse_ol_5, list_mse_ol_95,list_el_predictions, list_ol_predictions,list_data_for_plotting = execute_test(
+results = execute_test(
     target_variable,
     number_of_test_iterations,
     number_of_entities_per_test,
@@ -55,10 +57,18 @@ list_mse_el,list_mse_el_5, list_mse_el_95, list_mse_ol,list_mse_ol_5, list_mse_o
     increment_type,
     increment,
     reporting,
-    runs_per_iteration
+    runs_per_iteration,
+    hold_out_data
 )
 
-plot_boxplots_of_subsampling_results(list_mse_el, list_mse_ol,number_of_test_iterations, results_folder)
+plot_boxplots_of_subsampling_results(
+    results.ave_mse_el,
+    results.hold_out_mse_el,
+    results.ave_mse_ol,
+    results.hold_out_mse_ol,
+    number_of_test_iterations,
+    results_folder
+)
 
 if reporting:
     plot_subsampling_results(
@@ -68,15 +78,15 @@ if reporting:
         interclass_variability,
         intraclass_variability,
         coefficient,
-        list_el_predictions,
-        list_ol_predictions,
+        results.list_el_predictions,
+        results.list_ol_predictions,
         supporting_data_folder,
         increment_type,
         increment
     )
 
-    for i in range(len(list_data_for_plotting)):
-        data_pairplot(list_data_for_plotting[i], i, False, supporting_data_folder)
-        data_boxplots(list_data_for_plotting[i], target_variable, i, False,supporting_data_folder)
+    for i in range(len(results.list_data_for_plotting)):
+        data_pairplot(results.list_data_for_plotting[i], i, False, supporting_data_folder)
+        data_boxplots(results.list_data_for_plotting[i], target_variable, i, False,supporting_data_folder)
 
 print('complete')

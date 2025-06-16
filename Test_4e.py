@@ -50,7 +50,7 @@ parameter_dict= {
 results_folder,supporting_data_folder = create_output_subfolders(parameter_dict, parent_folder='Outputs', name=test_name)
 
 # Test subsampling strategies
-list_mse_el,list_mse_el_5, list_mse_el_95, list_mse_ol,list_mse_ol_5, list_mse_ol_95, list_el_predictions, list_ol_predictions,list_data_for_plotting = execute_test(
+results = execute_test(
     target_variable,
     number_of_test_iterations,
     number_of_entities_per_test,
@@ -67,12 +67,12 @@ list_mse_el,list_mse_el_5, list_mse_el_95, list_mse_ol,list_mse_ol_5, list_mse_o
 
 #Plot line plots of mse vs iterations
 lineplots_of_prediction_metrics(
-    list_mse_el,
-    list_mse_el_5,
-    list_mse_el_95,
-    list_mse_ol,
-    list_mse_ol_5,
-    list_mse_ol_95,
+    results.ave_mse_el,
+    results.ave_mse_el_5,
+    results.ave_mse_el_95,
+    results.ave_mse_ol,
+    results.ave_mse_ol_5,
+    results.ave_mse_ol_95,
     number_of_entities_per_test,
     number_of_observations_per_entity,
     number_of_test_iterations,
@@ -106,8 +106,8 @@ if reporting:
         interclass_variability,
         intraclass_variability,
         coefficient,
-        list_el_predictions,
-        list_ol_predictions,
+        results.list_el_predictions,
+        results.list_ol_predictions,
         supporting_data_folder,
         increment_type,
         increment
