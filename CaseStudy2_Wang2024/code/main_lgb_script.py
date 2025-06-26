@@ -5,7 +5,9 @@
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
-from tqdm import tqdm_notebook as tqdm
+from lightgbm import early_stopping, log_evaluation
+from tqdm import tqdm
+#from tqdm import tqdm_notebook as tqdm
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import confusion_matrix
@@ -111,9 +113,10 @@ for file in train_data_list:
         _['label'] = 1
     else:
         _['label'] = 0
-    _.columns = ['TI', 'Y', 'NB', 'LA', 'CE', 'CE*', 'PR', 'ND', 'SM', 'EU', 'EU*', 'GD', 'TB', 'DY',
+    _.columns = ['ROCK TYPE','TI', 'Y', 'NB', 'LA', 'CE', 'CE*', 'PR', 'ND', 'SM', 'EU', 'EU*', 'GD', 'TB', 'DY',
        'HO', 'ER', 'TM', 'YB', 'LU', 'HF', 'TA', 'TH', 'U', 'label']
     train_data = pd.concat([train_data,_], axis=0)
+    train_data = train_data.drop('ROCK TYPE', axis=1)
 train_data = train_data.reset_index(drop=True)
 
 valid = pd.read_excel('../data/{}'.format('application data.xlsx'))
@@ -172,7 +175,9 @@ for i in tqdm(range(len(feas)-2)):
 X_train, X_test = train_test_split(train_data, test_size=0.3, random_state=42)
 
 '''Cell 10'''
-
+y = X_train['label']
+y_test = X_test['label']
+cat_cols = []
 
 X_train = X_train.reset_index(drop=True)
 X_test = X_test.reset_index(drop=True)
@@ -216,18 +221,21 @@ def lgb_5fold(X_train, X_test, valid, train_data, seed, features_slc):
         print("fold n°{}".format(fold_))
         print('trn_idx:', trn_idx)
         print('val_idx:', val_idx)
-        trn_data = lgb.Dataset(X_train.iloc[trn_idx][features_slc], label=y.iloc[trn_idx])
-        val_data = lgb.Dataset(X_train.iloc[val_idx][features_slc], label=y.iloc[val_idx])
+        trn_data = lgb.Dataset(X_train.iloc[trn_idx][features_slc], label=y.iloc[trn_idx],categorical_feature=cat_cols,)
+        val_data = lgb.Dataset(X_train.iloc[val_idx][features_slc], label=y.iloc[val_idx],categorical_feature=cat_cols,)
         num_round = 10000
         clf = lgb.train(
             params,
             trn_data,
             num_round,
             valid_sets=[trn_data, val_data],
-            verbose_eval=100,
-            early_stopping_rounds=200,
-            categorical_feature=cat_cols,
-            feval=F1_score
+            #verbose_eval=100,
+            #early_stopping_rounds=200,
+            feval=F1_score,
+            callbacks=[
+                early_stopping(stopping_rounds=200),
+                log_evaluation(period=100)
+            ]
         )
         oof_lgb[val_idx] = clf.predict(X_train.iloc[val_idx][features_slc], num_iteration=clf.best_iteration)
         predictions_lgb[:, fold_] = clf.predict(X_test[features_slc], num_iteration=clf.best_iteration)
@@ -280,7 +288,6 @@ train_data['pred'] = [1 if f>=p else 0 for f in train_lgb.mean(axis=1).tolist()]
 
 valid['prob'] = valid_lgb.mean(axis=1)
 valid['pred'] = [1 if f>=p else 0 for f in valid_lgb.mean(axis=1).tolist()]
-
 
 '''Cell 17'''
 cols_output = features_slc + ['label','prob','pred']
