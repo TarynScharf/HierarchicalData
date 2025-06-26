@@ -17,7 +17,6 @@ from sklearn.model_selection import HalvingGridSearchCV
 from sympy.logic.boolalg import Boolean
 from tqdm import tqdm
 from statsmodels.stats.multitest import multipletests
-
 from fictitious_sampler_predictive import FictitiousSamplerPredictive
 from fictitious_sample_simple import FictitiousSamplerSimple
 from testing_framework import *
