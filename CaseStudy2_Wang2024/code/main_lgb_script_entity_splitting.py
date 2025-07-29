@@ -65,7 +65,7 @@ def plot_confusion_matrix(y_true, y_pred, classes,type,
     fig.tight_layout()
     #return ax
     parent_folder = Path(__file__).resolve().parent.parent
-    plt.savefig(f"{parent_folder}/Outputs/{type}_confusion_matrix.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{parent_folder}/Outputs/{type}_confusion_matrix.svg", dpi=300, bbox_inches='tight')
     plt.close()
 
 def cal(y, oof_lgb, p=0.5):
@@ -235,14 +235,13 @@ def F1_score(preds, dtrain):
     return 'f1_score', f_score, True
 
 '''Cell 12'''
-def lgb_5fold(X_train,y_train, X_test, valid, train_data, seed, features_slc, entity = False, groups = None):
+def lgb_5fold(X_train,y_train, X_test, valid, train_data, features_slc, entity = False, groups = None):
     '''
     :param X_train: x of dataset for model training
     :param y_train: y of dataset for model training
     :param X_test: x of dataset for model testing
     :param valid: external validation dataset
     :param train_data: All data (includes train and test data)
-    :param seed: int, for making results reproduceable
     :param features_slc: features to use for training
     :param entity: whether to use entity-splitting should be applied
     :param groups: group to use for entity_splitting
@@ -272,10 +271,10 @@ def lgb_5fold(X_train,y_train, X_test, valid, train_data, seed, features_slc, en
 
         # This kfold will only use the training data, in accordance with the original methodology.
         if not entity:
-            KF = StratifiedKFold(n_splits=5, random_state=seed, shuffle=True)
+            KF = StratifiedKFold(n_splits=5, shuffle=True, random_state=repeat)
             KF_splits = KF.split(X_train.values, y_train.values)
         else:
-            KF = StratifiedGroupKFold(n_splits=5, shuffle=True)
+            KF = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=repeat)
             KF.get_n_splits(X_train.values, y_train.values)
             KF_splits = KF.split(X_train.values, y_train.values, groups)
 
@@ -330,8 +329,8 @@ def lgb_5fold(X_train,y_train, X_test, valid, train_data, seed, features_slc, en
 '''Cell 14'''
 #The selected 120 features are present here. The code for feature selection is present in In [13].
 features_slc = ['CE**EU*EU', 'YB/LU', 'NB/LA/CE*', 'TM/YB', 'Y/LA/TB', 'ER/YB', 'TH/U', 'EU**EU**TA', 'ER/TM', 'PR/ND/EU*', 'LU/TH', 'HO-LU', 'TI*TI*CE', 'TB/DY', 'TH-U', 'DY/HO', 'TA/U', 'Y/CE*/TH', 'NB*EU**U', 'Y/CE*/EU', 'TI*TI*DY', 'Y/DY/HF', 'HF-U', 'ND-EU-EU', 'TI*EU**U', 'CE**ND*HF', 'NB/LU/TA', 'EU/GD', 'Y*HF*TA', 'Y/CE/EU*', 'Y/YB/TH', 'YB/LU/HF', 'CE-ND-TA', 'PR/ND/TA', 'SM/GD', 'TI/NB/EU*', 'GD/TB', 'CE/U', 'Y/NB', 'Y*EU**HF', 'TI*TI*U', 'HO/ER', 'LA+EU*+TA', 'CE/DY/U', 'CE/EU/TA', 'TI*TI*TA', 'TI/EU*/HF', 'TI*Y*TA', 'CE/HF/HF', 'CE/GD', 'TI*EU*HF', 'CE/HF/TH', 'CE/GD/HF', 'CE/EU*/TH', 'TI*Y*EU*', 'TI*HF*HF', 'EU**HF*TA', 'HF-TH-U', 'EU/GD/HF', 'YB/LU/TA', 'CE/EU*', 'NB/CE/CE', 'Y/CE/U', 'CE/DY/DY', 'Y/TH', 'PR/EU/TA', 'CE/EU*/EU*', 'EU**HF*HF', 'Y/TM', 'Y/HO', 'Y/NB/EU*', 'NB/HF/U', 'ER-LU-LU', 'HO-LU-TA', 'TI*NB*TA', 'Y/EU*/U', 'Y/ER', 'Y/NB/ER', 'TI/EU*/TA', 'HO/TM', 'CE/TA/TH', 'TM/YB/HF', 'TI*HF*TA', 'TB/LU/HF', 'ER/LU', 'Y/DY/TA', 'DY-LU-LU', 'CE/EU/TH', 'ER/TM/HF', 'TA*U', 'TM/LU', 'NB/HF/TH', 'CE*EU**HF', 'Y*CE*EU*', 'Y/NB/YB', 'ND-EU-EU*', 'NB/TH/U', 'CE/TA/U', 'Y/SM', 'TI/HF/HF', 'Y/YB', 'TI/HF', 'EU*/TA/TA', 'CE/EU/HF', 'DY-LU-TA', 'CE/SM/HF', 'DY/LU', 'ER/YB/HF', 'Y/DY', 'Y/NB/CE', 'SM/EU/TA', 'CE/EU/EU*', 'CE/EU*/U', 'NB/HF/TA', 'NB/TA', 'TB/DY/HF', 'NB-TA-TA', 'SM/GD/HF', 'EU/EU*/GD', 'CE/TH']
-oof_lgb,predictions_lgb,valid_lgb,train_lgb,df_feature_importance,predictions_lgb_10x5_repeats = lgb_5fold(X_train, y_train, X_test, valid, train_data, 12, features_slc)
-oof_lgb_ent,predictions_lgb_ent,valid_lgb_ent,train_lgb_ent,df_feature_importance_ent,predictions_lgb_ent_10x5_repeats = lgb_5fold(X_train_entity, y_train_entity, X_test_entity, valid, train_data, 12, features_slc, entity=True, groups = X_train_entity['ENTITY_ID'])
+oof_lgb,predictions_lgb,valid_lgb,train_lgb,df_feature_importance,predictions_lgb_10x5_repeats = lgb_5fold(X_train, y_train, X_test, valid, train_data, features_slc)
+oof_lgb_ent,predictions_lgb_ent,valid_lgb_ent,train_lgb_ent,df_feature_importance_ent,predictions_lgb_ent_10x5_repeats = lgb_5fold(X_train_entity, y_train_entity, X_test_entity, valid, train_data, features_slc, entity=True, groups = X_train_entity['ENTITY_ID'])
 
 '''Cell 15'''
 predictions_lgb = predictions_lgb.mean(axis=1)
@@ -362,26 +361,26 @@ plot_cv_results(entity_results=entity_f1_array , observation_results=observation
 print('#'*20)
 print('Observation train confusion matrix')
 class_names = np.array(["0","1"])
-plot_confusion_matrix(y_train, [1 if i >= p else 0 for i in oof_lgb], classes=class_names, type='observation_train', normalize=False)
-plot_confusion_matrix(y_train, [1 if i >= p else 0 for i in oof_lgb], classes=class_names, type='observation_train_normalised', normalize=True)
+plot_confusion_matrix(y_train, [1 if i >= p else 0 for i in oof_lgb], classes=class_names, type='observation_train', normalize=False, cmap = plt.cm.Blues)
+plot_confusion_matrix(y_train, [1 if i >= p else 0 for i in oof_lgb], classes=class_names, type='observation_train_normalised', normalize=True, cmap = plt.cm.Blues)
 
 print('#'*20)
 print('Observation test confusion matrix')
 class_names = np.array(["0","1"])
-plot_confusion_matrix(y_test.values, [1 if i >= p else 0 for i in predictions_lgb], classes=class_names, type='observation_test', normalize=False)
-plot_confusion_matrix(y_test.values, [1 if i >= p else 0 for i in predictions_lgb], classes=class_names, type='observation_test_normalised', normalize=True)
+plot_confusion_matrix(y_test.values, [1 if i >= p else 0 for i in predictions_lgb], classes=class_names, type='observation_test', normalize=False, cmap = plt.cm.Blues)
+plot_confusion_matrix(y_test.values, [1 if i >= p else 0 for i in predictions_lgb], classes=class_names, type='observation_test_normalised', normalize=True,cmap = plt.cm.Blues)
 
 print('#'*20)
 print('Entity train confusion matrix')
 class_names = np.array(["0","1"])
-plot_confusion_matrix(y_train_entity, [1 if i >= p else 0 for i in oof_lgb_ent], classes=class_names,type='entity_train', normalize=False)
-plot_confusion_matrix(y_train_entity, [1 if i >= p else 0 for i in oof_lgb_ent], classes=class_names,type='entity_train_normalised', normalize=True)
+plot_confusion_matrix(y_train_entity, [1 if i >= p else 0 for i in oof_lgb_ent], classes=class_names,type='entity_train', normalize=False, cmap = plt.cm.Reds)
+plot_confusion_matrix(y_train_entity, [1 if i >= p else 0 for i in oof_lgb_ent], classes=class_names,type='entity_train_normalised', normalize=True, cmap = plt.cm.Reds)
 
 print('#'*20)
 print('Entity test confusion matrix')
 class_names = np.array(["0","1"])
-plot_confusion_matrix(y_test_entity.values, [1 if i >= p else 0 for i in predictions_lgb_ent], classes=class_names,type='entity_test', normalize=False)
-plot_confusion_matrix(y_test_entity.values, [1 if i >= p else 0 for i in predictions_lgb_ent], classes=class_names,type='entity_test_normalised', normalize=True)
+plot_confusion_matrix(y_test_entity.values, [1 if i >= p else 0 for i in predictions_lgb_ent], classes=class_names,type='entity_test', normalize=False, cmap = plt.cm.Reds)
+plot_confusion_matrix(y_test_entity.values, [1 if i >= p else 0 for i in predictions_lgb_ent], classes=class_names,type='entity_test_normalised', normalize=True, cmap = plt.cm.Reds)
 
 print('#'*20)
 print('positive number in application data:')
@@ -403,6 +402,10 @@ df_feature_importance.sort_values(by='gain', ascending=False).to_excel('../res/f
 print('#'*20)
 print('feature importance：')
 print(df_feature_importance.sort_values(by='gain', ascending=False).head(10))
+
+print('#'*20)
+print('feature importance entity：')
+print(df_feature_importance_ent.sort_values(by='gain', ascending=False).head(10))
 
 '''Cell 19'''
 df_index = pd.DataFrame()

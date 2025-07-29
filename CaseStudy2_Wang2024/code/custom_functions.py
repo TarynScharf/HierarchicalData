@@ -42,25 +42,25 @@ def plot_cv_results(entity_results, observation_results,title):
     df_results.to_csv(os.path.join(parent_directory, 'Outputs', 'F1_crossvalidation_results.csv'))
 
     # Create subplots
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(13 / 2.54, 6.5 / 2.54))
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(13 / 2.54, 6.5 / 2.54))
 
     ## List 1: Histogram + KDE
-    sns.histplot(entity_results, kde=False, ax=axes[0], stat='count', color=red_envelope, edgecolor='black',alpha=0.5)
-    axes[0].axvline(median1, color='red', linestyle='--', label=f'Median = {median1:.2f}')
-    ax0_2 = axes[0].twinx()
-    sns.kdeplot(entity_results, ax=ax0_2, color=red_line, linewidth=2)
-    axes[0].set_title('Entity-level splitting')
-    axes[0].legend()
-    axes[0].set_xlabel('Macro F1')
+    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5)
+    axes.axvline(median1, color='red', linestyle='--', label=f'ES median = {median1:.2f}')
+    ax_2 = axes.twinx()
+    sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
+    #axes.set_title('Entity-level splitting')
+    axes.legend()
+    #axes.set_xlabel('Macro F1')
 
     # List 2: Histogram + KDE
-    sns.histplot(observation_results, kde=False, ax=axes[1], stat='count', color=blue_envelope, edgecolor=blue_line)
-    axes[1].axvline(median2, color='red', linestyle='--', label=f'Median = {median2:.2f}')
-    ax1_2 = axes[1].twinx()
-    sns.kdeplot(observation_results, ax=ax1_2, color=blue_line, linewidth=2)
-    axes[1].set_title('Observation-level splitting')
-    axes[1].legend()
-    axes[1].set_xlabel ('Macro F1')
+    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line)
+    axes.axvline(median2, color='blue', linestyle='--', label=f'OS median = {median2:.2f}')
+    #ax1_2 = axes[1].twinx()
+    sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
+    axes.set_title('Splitting strategy comparison')
+    axes.legend()
+    axes.set_xlabel ('Macro F1')
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(os.path.join(parent_directory, 'Outputs',f'{title}.svg'))
