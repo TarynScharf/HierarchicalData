@@ -113,10 +113,12 @@ for file in train_data_list:
         _['label'] = 1
     else:
         _['label'] = 0
-    _.columns = ['ROCK TYPE','TI', 'Y', 'NB', 'LA', 'CE', 'CE*', 'PR', 'ND', 'SM', 'EU', 'EU*', 'GD', 'TB', 'DY',
+        #Updated to apply column names to all columns imported from the Excel file
+    _.columns = ['CITATION', 'SAMPLE NAME','ROCK TYPE','TI', 'Y', 'NB', 'LA', 'CE', 'CE*', 'PR', 'ND', 'SM', 'EU', 'EU*', 'GD', 'TB', 'DY',
        'HO', 'ER', 'TM', 'YB', 'LU', 'HF', 'TA', 'TH', 'U', 'label']
     train_data = pd.concat([train_data,_], axis=0)
-    train_data = train_data.drop('ROCK TYPE', axis=1)
+    #Get rid of the columns not needed.
+    train_data = train_data.drop(['CITATION', 'SAMPLE NAME','ROCK TYPE'], axis=1)
 train_data = train_data.reset_index(drop=True)
 
 valid = pd.read_excel('../data/{}'.format('application data.xlsx'))

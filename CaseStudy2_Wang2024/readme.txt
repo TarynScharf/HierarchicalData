@@ -1,31 +1,13 @@
-********************************************** 
-Version: Python 3.8 
-IDE: Jupyter
-We recommend the readers to download Anaconda (https://www.anaconda.com/download/). The install time is typically less than one hour.
-**********************************************
-Library:
-numpy, pandas, lightgbm, sklearn, matplotlib
+Case study 2 in manuscript "Hierarchically structured data can undermine machine learning results in geoscience", by Scharf, Daggitt, Doucet and Kirkland.
+This is 1) a reproduction and 2) an edit of code published by Wang et al. (2024). We look only at the model for the first step of zircon classification.
+This work was completed using Python 3.13 in PyCharm 2024.3.4 (Community Edition).
 
-Function：
-main_lgb.ipynb reads the training dataset to train the LightGBM model and the optimal model is then applied to the application dataset to predict the carbonatite-alkaline zircons.
+Files of note:
+- main_lgb_script.py: Wang et al. (2024) published a jupyter notebook. We have copied their code cell-by-cell and provide it in as a python script, commented with cell numbers. Minimal updates are added to ensure that this script runs with 1) the published datasets of Wang et al. (2024) and 2) the version of Python packages used at the time that this reproduction was done (listed in the requirements file).
+- main_lgb_script_entity_splitting.py: An updates of main_lgb_script.py to execute a comparison of entity-splitting and observation-splitting methodologies.
+- custom_functions.py: Additional functions NOT originally created by Wang et al. (2024). These faciliate plotting.
+- requirements.txt: a list of Python packages used to complete this work.
+- readme_Wang2024.txt: the original readme file of Wang et al. (2024), not to be confused with the readme file relevant to this project.
 
-Data Set：
-application data.xlsx: The application dataset containing detrital zircons with unknown source rock types.
-training_raw data_1.xlsx: The training dataset containing positive samples (carbonatite-alkaline zircons).
-training_raw data_0.xlsx: The training dataset containing negative samples (other zircons).
-
-Parameters:
-test_size = 0.3; random_state = 42; objective = binary; metric = binary_error; learning_rate = 0.05; subsample = 0.8; subsample_freq = 3; num_iterations = 2000; is_unbalance = True 
-
-Output File:
-application data_label: The predicted result of the application dataset with labels.
-feature importance: The importance score of the selected features.
-ks: The Kolmogorov-Smirnov score of the selected features.
-training data_lable: The merged dataset of positive and negative samples with labels.
-
-Notice:
-In order to save run time, we input the selected features in In[14]. The code for feature selection is given in In[13].
-You can change the filenames and parameters as you need.
-It would take more than 2 hours for running the complete code on a "normal" computer. 
-*********************************************
-
+Folders of note:
+- Outputs: A folder where outputs, primarily plots, are saved to.
