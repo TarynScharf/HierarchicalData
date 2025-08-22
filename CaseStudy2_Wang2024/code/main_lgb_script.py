@@ -141,7 +141,6 @@ for fea in feas:
     train_data.loc[train_data[fea].isnull(), '{}_isnull'.format(fea)] =1
     valid.loc[valid[fea].isnull(), '{}_isnull'.format(fea)] =1
 
-
 '''Cell 5'''
 train_data = train_data.fillna(-99)
 valid = valid.fillna(-99)
@@ -150,7 +149,6 @@ valid = valid.fillna(-99)
 X_train, X_test = train_test_split(train_data, test_size=0.3, random_state=42)
 #X_train.to_excel('../res/training_set.xlsx', index=True)
 #X_test.to_excel('../res/test_set.xlsx', index=True)
-
 
 '''Cell 7'''
 feas_expode = []

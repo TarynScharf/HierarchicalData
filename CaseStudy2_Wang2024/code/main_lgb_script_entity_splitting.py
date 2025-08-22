@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.model_selection import StratifiedKFold, KFold, StratifiedGroupKFold
 from sklearn.metrics import roc_auc_score, f1_score, precision_score, recall_score
 from pathlib import Path
-from custom_functions import create_f1_array, plot_cv_results
+from custom_functions import create_f1_array, plot_cv_results, test_independence_of_entities
 
 def plot_confusion_matrix(y_true, y_pred, classes,type,
                           normalize=False,
@@ -155,6 +155,7 @@ for fea in feas:
 '''Cell 5'''
 train_data = train_data.fillna(-99)
 valid = valid.fillna(-99)
+test_independence_of_entities(train_data, entity_id='ENTITY_ID', target_column='label', compositional_columns=feas)
 
 '''Cell 6'''
 X_train, X_test = train_test_split(train_data, test_size=0.3, random_state=42)
@@ -190,9 +191,9 @@ for i in tqdm(range(len(feas)-2)):
 '''Cell 9'''
 X_train, X_test = train_test_split(train_data, test_size=0.3, random_state=42)
 
-# The previous train-test split is an observation-split (random splitting), as implemented by Wang (2024).
+# The previous train-test split is an observation-split (random splitting), as implemented by Wang et al. (2024).
 # Here I perform the entity_splitting equivalent, for comparison.
-#Note that neither of these splitting methodologies will stratify the datasets
+# Note that neither of these splitting methodologies will stratify the datasets
 gss = GroupShuffleSplit(n_splits = 1, train_size = 0.7, random_state = 42) #only perform this split once
 le = LabelEncoder()
 train_data["ENTITY_ID"] = le.fit_transform(train_data["ENTITY_ID"])
