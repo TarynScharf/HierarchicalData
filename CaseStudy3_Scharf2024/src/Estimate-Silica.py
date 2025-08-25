@@ -5,10 +5,10 @@ import glob
 import os
 import random
 import numpy as np
-#import optuna
-#import shap
-#from keras.callbacks import History
-#from optuna.trial import TrialState
+import optuna
+import shap
+from keras.callbacks import History
+from optuna.trial import TrialState
 import pandas as pd
 import seaborn as sns
 from sklearn.model_selection import train_test_split, KFold
@@ -17,12 +17,12 @@ from sklearn.decomposition import PCA
 import operator as op
 from functools import reduce
 from itertools import combinations
-#import tensorflow as tf
-#import tensorflow_addons as tfa
-#from tensorflow.keras.layers.experimental import preprocessing
-#import tensorflow.keras.backend as K
+import tensorflow as tf
+import tensorflow_addons as tfa
+from tensorflow.keras.layers.experimental import preprocessing
+import tensorflow.keras.backend as K
 
-def pca(df, features, ML_features=None, u_th_features=None, keep_columns = None, pca_model = None, scaling_data = None, output_location = None):
+def pca(df, features, ML_features=None, keep_columns = None, pca_model = None, scaling_data = None, output_location = None):
     #it's at this point that sampleid, bin, and CL textures are removed. Only shape and possibly U&Th (depending on the ML_features variable passed) form part of x, created below
     df.reset_index(drop=True, inplace=True)
     x = df.loc[:, features].values
@@ -49,18 +49,10 @@ def pca(df, features, ML_features=None, u_th_features=None, keep_columns = None,
     df_pca_loadings = pd.DataFrame(pca_model.components_, columns=features)
     df_pca_loadings.index = ['PC1', 'PC2', 'PC3']
 
-    if u_th_features is not None:
-        x_uth = df.loc[:, u_th_features].values
-        x1 = pd.concat([pd.DataFrame(pca_features),pd.DataFrame(x_uth)], axis=1)
-        column_headers = np.concatenate([['PC1', 'PC2', 'PC3'],np.array(u_th_features)])
-        x1.columns = [column_headers]
-    else:
-        x1 = pd.DataFrame(pca_features[:, 0:3])
-        x1.columns = ['PC1', 'PC2', 'PC3']
-
     if ML_features is not None:
-        x_ml_features = df.loc[:, ML_features]
-        x2 = pd.concat([x1,x_ml_features], axis = 1)
+        x_ml_features = df.loc[:, ML_features].values
+        x2 = pd.concat([pd.DataFrame(pca_features[:,0:5]),pd.DataFrame(x_ml_features[:,0:3])], axis = 1)
+        x2.columns = ['PC1', 'PC2', 'PC3', 'oscillatory_zonation', 'sector_zonation', 'homogenous_zonation']
     else:
         x2 = pd.DataFrame(pca_features[:,0:3])
         x2.columns = ['PC1', 'PC2', 'PC3']
@@ -440,13 +432,11 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
 
     if UTH:
         columns = ['GSWA_sample_id', 'area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret', 'U238_ppm', 'Th232_ppm', 'SiO2_pct', 'oscillatory_zonation', 'sector_zonation','homogenous_zonation']
-        pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret']
-        u_th_features = ['U238_ppm', 'Th232_ppm']
+        pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret','U238_ppm', 'Th232_ppm']
 
     else:
         columns = ['GSWA_sample_id', 'area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret', 'U238_ppm', 'Th232_ppm', 'SiO2_pct', 'oscillatory_zonation', 'sector_zonation','homogenous_zonation']
         pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret']
-        u_th_features = None
 
     #1 - load raw data and remove outlier samples
     df1 = load_dataset(input_data_filepath,outliers_to_remove,columns,UTH,all_data)
@@ -478,14 +468,16 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
     df_train_test = pd.concat([train_balanced_classes,test_OG], ignore_index=True)
 
     #4.4 - PCA on train and test data
-    keep_columns = ['SiO2_pct', 'Dataset', 'GSWA_sample_id']
-    df_pca, pca_loadings = pca(df_train_test, pca_features, ML_features,u_th_features, keep_columns, pca_model = None, scaling_data = None, output_location=location)
+    df_pca, pca_loadings = pca(df_train_test, pca_features, ML_features, keep_columns=['SiO2_pct', 'Dataset', 'GSWA_sample_id'], pca_model = None, scaling_data = None, output_location=location)
 
     #4.5 - separate into train and test datasets again
     df_train_pca = df_pca[df_pca['Dataset']=='train']
     df_train_pca = df_train_pca.sample(frac=1).reset_index(drop=True)
+    if CL:
+        fields = ['PC1','PC2','PC3', 'oscillatory_zonation', 'sector_zonation', 'homogenous_zonation']
+    else:
+        fields = ['PC1', 'PC2', 'PC3']
 
-    fields = [header for header in df_train_pca.columns.values if header not in keep_columns]
     x_train_pca = df_train_pca[fields]
     y_train_pca = df_train_pca[['SiO2_pct']]
 
@@ -592,11 +584,9 @@ def apply_model(use_UTH,use_CL,model_path,dataset_for_pca_loadings,data_columns,
 
     #housekeeping
     if use_UTH:
-        pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret']
-        u_th_features = ['U238_ppm', 'Th232_ppm']
+        pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret', 'U238_ppm', 'Th232_ppm']
     else:
         pca_features = ['area', 'equivalent_diameter', 'perimeter', 'minor_axis_length', 'major_axis_length', 'solidity', 'convex_area', 'form_factor', 'roundness', 'compactness', 'aspect_ratio', 'minimum_Feret', 'maximum_Feret']
-        u_th_features = None
 
     if use_CL:
         ML_features = ['oscillatory_zonation', 'sector_zonation', 'homogenous_zonation']
@@ -605,7 +595,7 @@ def apply_model(use_UTH,use_CL,model_path,dataset_for_pca_loadings,data_columns,
 
     #1- load the original train_test data that pca was performed on, to generate the pca_loadings
     df_for_pca = pd.read_csv(dataset_for_pca_loadings, usecols = data_columns)
-    _, pca_loadings = pca(df_for_pca, pca_features,ML_features,u_th_features, keep_columns=None, pca_model=None,output_location=output_location)
+    _, pca_loadings = pca(df_for_pca, pca_features, ML_features, keep_columns=None, pca_model=None,output_location=output_location)
 
     #2 load the data set to predict on:
     df_data_all = pd.read_csv(data_to_predict_on, usecols = prediction_columns)
@@ -617,7 +607,7 @@ def apply_model(use_UTH,use_CL,model_path,dataset_for_pca_loadings,data_columns,
         df_data = df_data_all
 
     # The new data must be scale by the model's training dataset. Hence scaling_data is used in this funcition
-    df_data_pca,_ = pca(df_data, pca_features,ML_features,u_th_features, keep_columns=keep_columns, pca_model=pca_loadings, scaling_data=df_for_pca,output_location=output_location)
+    df_data_pca,_ = pca(df_data, pca_features, ML_features, keep_columns=keep_columns, pca_model=pca_loadings, scaling_data=df_for_pca,output_location=output_location)
     #3 - create x data sets for prediction
     if use_CL:
         x = df_data_pca.loc[:,['PC1', 'PC2', 'PC3', 'oscillatory_zonation', 'sector_zonation','homogenous_zonation']]
@@ -870,10 +860,18 @@ setup_seed(42)
 
 #Specify which model to apply to a test data subset or to new data:
 #1) This is the name of the folder in which all models are located once they created. Model are created by running the train_test_model function using the parameter Test = 'Optuna'
-models_folder =os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),'Models')
+models_folder =os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),'Outputs')
+
+#2) This is the name of the folder that holds the model itself, which will be in the output folder defined above
+#Currently, there is an example of an Optuna run that comprises 2 trials, in the Ouputs folder
+#Optuna will save the model it creates for each trial. You will look at the Optuna outputs to decide which trial was the best performer, and use that model
+#The model name will be something along the lines of: Description/last_epoch_model_trialxxxx
+# For example as shown below: Results_Optuna_2AGGx2Resample_SHAPE_UTH_CL_15062023155745\last_epoch_model_trial1
+model_description = 'Results_Optuna_2AGGx2Resample_SHAPE_UTH_CL_20062023130738\last_epoch_model_trial0'
 
 #This just makes it a bit easier to rerun scenarios. Specify the scenario option:
 #If you're testing a model, you must have created a model for the appropriate scenario.
+
 scenario = 'scenario_2'
 
 if scenario == 'scenario_1':
@@ -881,49 +879,42 @@ if scenario == 'scenario_1':
     use_UTH = True
     use_all_data = True
     cap_data_at_69 = False
-    model_description = 'scenario1_last_epoch_model_trial134'
 
 elif scenario == 'scenario_2':
     use_CL=True
     use_UTH = True
     use_all_data=False
     cap_data_at_69 = True
-    model_description = 'scenario2_last_epoch_model_trial57'
 
 elif scenario == 'scenario_3':
     use_CL = False
     use_UTH = True
     use_all_data = False
     cap_data_at_69 = True
-    model_description = 'scenario3_ last_epoch_model_trial31'
 
 elif scenario == 'scenario_4':
     use_CL = True
     use_UTH = False
     use_all_data = False
     cap_data_at_69 = True
-    model_description = 'scenario4_last_epoch_model_trial153'
 
 elif scenario == 'scenario_5':
     use_CL = True
     use_UTH = False
     use_all_data = True
     cap_data_at_69 = True
-    model_description = 'scenario5_last_epoch_model_trial47'
 
 elif scenario == 'scenario_6':
     use_CL = False
     use_UTH = False
     use_all_data = False
     cap_data_at_69 = True
-    model_description = 'scenario6_last_epoch_model_trial113'
 
 elif scenario == 'scenario_7':
     use_CL = False
     use_UTH = False
     use_all_data = True
     cap_data_at_69 = True
-    model_description = 'scenario7_last_epoch_model_trial32'
 
 #Optimise the models, or run 5-fold cross-validation, or test an optimimal model
 
@@ -938,10 +929,10 @@ train_test_model(
     UTH=use_UTH, # whether or not to use U and Th data per grain
     all_data=use_all_data, #For scenarios that don't use U and Th, choose whether to test on all the data or the analysis-constrained data
     outliers_to_remove= None,  # list any outlier sample ID to remove. Provide this input as an array e.g. [180933,168936]
-    epochs=2, #How many epochs to train for (early-stopping is applied, though)
+    epochs=200, #How many epochs to train for (early-stopping is applied, though)
     n_trials=2, #Number of Optuna trials to run
     batchsize=32, #batchsize of 32 is the Tensorflow default
-    Test = 'Optuna',#Indicates wich action to take. Options: 'Optuna', 'Kfold', 'Test'. If not specified, the function exits once data sets are created.
+    Test = 'Kfold',#Indicates wich action to take. Options: 'Optuna', 'Kfold', 'Test'. If not specified, the function exits once data sets are created.
     model_filepath = os.path.join(models_folder, model_description) # path to the model you are applying on the test data. If not None, specify the model here using this:  os.path.join(models_folder, description)
     )
 

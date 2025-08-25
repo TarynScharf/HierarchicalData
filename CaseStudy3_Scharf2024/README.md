@@ -10,4 +10,6 @@ Files of note:
 - readme_Scharf2024.md: the original readme file of Scharf et al. (2024), not to be confused with the readme file relevant to this project.
 
 Folders of note:
-- Outputs: A folder where outputs are saved to.
+- Outputs: A folder where outputs are saved to. 
+  - Reproduction_Kfold_scenario_2_2AGGx2Resample_SHAPE_UTH_CL_24082025160859: The results of Estimate-Silica.py, reproducing kfold results of Scharf et al. (2024). 
+  - Results_Kfold_scenario_2_2AGGx2Resample_SHAPE_UTH_CL_25082025121841: The results of Estimate-Silica_entity_split.py.

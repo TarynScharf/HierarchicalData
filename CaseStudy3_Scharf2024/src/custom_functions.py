@@ -122,18 +122,21 @@ def plot_cv_results(entity_results, observation_results,title, output_location):
     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
 
     ## List 1: Histogram + KDE
-    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5)
-    axes.axvline(median1, color='red', linestyle='--', label=f'ES median = {median1:.2f}')
+    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.5)
+    axes.axvline(median1, color='red', linestyle='--', label=f'ES median: {median1:.2f}')
     ax_2 = axes.twinx()
     sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
     axes.legend()
 
     # List 2: Histogram + KDE
-    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line)
-    axes.axvline(median2, color='blue', linestyle='--', label=f'OS median = {median2:.2f}')
+    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line, binwidth = 0.5)
+    axes.axvline(median2, color='blue', linestyle='--', label=f'OS median: {median2:.2f}')
     sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
     axes.legend()
     axes.set_xlabel ('Mean squared error')
+
+    #Add the reference line for Scharf et al. (2004)
+    axes.axvline(x = 3.12**2, color='black', linestyle=':', label=f'Scharf et al. (2024): {3.12**2:.2f}')
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(os.path.join(parent_directory, 'Outputs',output_location,f'{title}.svg'))
@@ -177,7 +180,7 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     observation_x, observation_y, observation_model_y, observation_r_squared, obs_x_clipped, obs_y_clipped, obs_y_model_clipped = return_regression_results(observation_df)
 
     # Create subplots
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(16 / 2.54, 12 / 2.54))
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12 / 2.54, 12 / 2.54))
     #hxb_entity = axes[0].hexbin(ent_x_clipped, ent_y_clipped, gridsize=50, cmap='Reds')
     #axes[0].set_aspect('equal', adjustable='box')
     #axes[0].set_xlim(45, 70)  # Example x-axis limits
@@ -188,8 +191,8 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     axes[0].legend()
     axes[0].set_xlabel('Actual whole-rock silica (%)')
     axes[0].set_ylabel('Predicted whole-rock silica (%)')
-    axes[0].set_xlim(0, 80)
-    axes[0].set_ylim(0, 80)
+    axes[0].set_xlim(40, 80)
+    axes[0].set_ylim(40, 80)
     #divider_entity = make_axes_locatable(axes[0])
     #cax_ent = divider_entity.append_axes("right", size="5%", pad=0.05)
     #cbar_entity = fig.colorbar(hxb_entity, cax=cax_ent)
@@ -205,8 +208,8 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     axes[1].legend()
     axes[1].set_xlabel('Actual whole-rock silica (%)')
     axes[1].set_ylabel('Predicted whole-rock silica (%)')
-    axes[1].set_xlim(0, 80)
-    axes[1].set_ylim(0, 80)
+    axes[1].set_xlim(40, 80)
+    axes[1].set_ylim(40, 80)
     #divider_obs = make_axes_locatable(axes[1])
     #cax_obs = divider_obs.append_axes("right", size="5%", pad=0.05)
     #cbar_obs = fig.colorbar(hxb_observation, cax=cax_obs)
