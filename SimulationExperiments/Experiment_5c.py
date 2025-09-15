@@ -1,35 +1,37 @@
 
 from Utils import create_output_subfolders, execute_test, plot_subsampling_results, lineplots_of_prediction_metrics, IncrementType, \
-    list_mse_and_mape_for_all_iterations, plot_differences
+    list_mse_and_mape_for_all_iterations
 
 '''
 Hypothesis: 
-    Geoscience data is often genetically structured. Splitting by observation allows for data leakage because of
-    these genetic relationships. This data leakage results in inflated performance measurements.	
-    The size of this effect decreases when the number of entities is increased, not the number of observations
+    Geoscience data is often genetically structured. The phenomenon of data leakage due to hierarchical structuring can 
+    occur in both many-to-one relationships (e.g. data from many minerals used to predict a value about the single source 
+    rock) and one-to-one (e.g. data from a mineral used to predict another characteristic about that same mineral). 
+    As observations are constructed using entity latent variables, observations from a given entity are expected to be 
+    more like one another, and less like observations derived from a separate entity. Consequently, hierarchical data 
+    structures should be considered when splitting data in a one-to-one predictive relationship.
 Test:
     Create multiple entities and test model performance with observation-level and entity-level data splitting.
-    The test is repeated 100 times and the resultant MSE values are presented in box-plot format.
-    In each iteration, the amount of entities, onbservations, and intrasample variance remains constant.
-    The intersample variance increases in each iteration.
-    This is a replicate of Test 3b but instead of predicting variable 1 we are predicting feature 2.
+    In each iteration, the number of entities remains constant and the number of observations is increased.
+    This is a replicate of Experiment 2.2 but instead of predicting variable 1 we are predicting feature 2.
     I.e. 3 features of an observation are used to predict the 2nd feature. 
     This is a many-to-many relationship in the sense that the predictive value is not constant for multiple observations.
 '''
-
+`
 # Set up number of test iterations
-number_of_test_iterations = 100
+number_of_test_iterations = 30
 number_of_entities_per_test = 100
-increment = 0.5
-increment_type = IncrementType.INTERSAMPLE_VARIANCE
+increment = 50
+increment_type = IncrementType.OBSERVATION
 number_of_observations_per_entity = 50
 intraclass_variability=0.5
-interclass_variability=0.5
+interclass_variability=3
 coefficient=1
 runs_per_iteration= 100
-test_name = 'Test4e'
+test_name = 'Test5c'
 reporting = False
 target_variable = 'feature4'
+
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],
@@ -83,19 +85,6 @@ lineplots_of_prediction_metrics(
     increment_type,
     increment
     )
-
-'''plot_differences(
-    list_mse_el,
-    list_mse_ol,
-    number_of_entities_per_test,
-    number_of_observations_per_entity,
-    number_of_test_iterations,
-    interclass_variability,
-    intraclass_variability,
-    results_folder,
-    increment_type,
-    increment
-)'''
 
 # Plot scatter plots of each iteration actual vs predicted
 if reporting:

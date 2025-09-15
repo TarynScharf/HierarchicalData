@@ -11,6 +11,9 @@ from statsmodels.formula.api import ols
 from statsmodels.multivariate.manova import MANOVA
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multitest import multipletests
+from itertools import combinations
+from scipy.spatial.distance import pdist, squareform
+from sklearn.manifold import MDS
 
 
 def create_f1_array(dataframe):
@@ -49,11 +52,12 @@ def plot_cv_results(entity_results, observation_results,title):
     df_results.to_csv(os.path.join(parent_directory, 'Outputs', 'F1_crossvalidation_results.csv'))
 
     # Create subplots
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(13 / 2.54, 6.5 / 2.54))
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
 
     ## List 1: Histogram + KDE
-    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5)
-    axes.axvline(median1, color='red', linestyle='--', label=f'ES median = {median1:.2f}')
+    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.005)
+    axes.axvline(median1, color='red', linestyle='--', label=f'ES median: {median1:.2f}')
+    axes.axvline(0.91, color='black', linestyle=':', label=f'Wang et al. (2024): 0.91')
     ax_2 = axes.twinx()
     sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
     #axes.set_title('Entity-level splitting')
@@ -61,11 +65,10 @@ def plot_cv_results(entity_results, observation_results,title):
     #axes.set_xlabel('Macro F1')
 
     # List 2: Histogram + KDE
-    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line)
-    axes.axvline(median2, color='blue', linestyle='--', label=f'OS median = {median2:.2f}')
+    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line, binwidth = 0.005)
+    axes.axvline(median2, color='blue', linestyle='--', label=f'OS median: {median2:.2f}')
     #ax1_2 = axes[1].twinx()
     sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
-    axes.set_title('Splitting strategy comparison')
     axes.legend()
     axes.set_xlabel ('Macro F1')
 
@@ -79,26 +82,59 @@ def safe_closure(row, pseudocount=1e-6):
     row[row <= 0] = pseudocount
     return closure(row)
 
+def visualise_population_centroid_differences(prediction_class, dataframe,entity_id, factors, output_directory):
+    blue_line = (29 / 255, 66 / 255, 115 / 255, 0.9)
+    blue_envelope = (4 / 255, 196 / 255, 217 / 255, 0.6)
+    mpl.rcParams['svg.fonttype'] = 'none'
+    mpl.rcParams['font.family'] = 'Arial'
+    mpl.rcParams['font.size'] = 10
+
+    centroids = dataframe.groupby(entity_id)[factors].mean()
+    dist_matrix = squareform(pdist(centroids.values, metric="euclidean"))
+    dists = dist_matrix[np.triu_indices_from(dist_matrix, k=1)]
+
+    rock_class = ''
+    if prediction_class == 0:
+        rock_class = 'Subalkaline'
+    elif prediction_class == 1:
+        rock_class = 'Alkaline'
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12 / 2.54, 6 / 2.54))
+    sns.histplot(dists, kde=False, ax=axes[0], stat='count', color=blue_envelope, edgecolor='black', alpha=0.5)
+    axes[0].set_xlabel("Inter-group distance")
+    axes[0].set_ylabel("Frequency")
+
+    mds = MDS(dissimilarity="precomputed", random_state=42)
+    coords = mds.fit_transform(dist_matrix)
+    axes[1].scatter(coords[:, 0], coords[:, 1], facecolor = blue_envelope, edgecolor = blue_line, alpha = 0.5)
+    axes[1].set_xlabel("MDS dimension 1")
+    axes[1].set_ylabel("MDS dimension 2")
+    plt.tight_layout()
+    fig.savefig(os.path.join(output_directory, f'{rock_class}_entity_centroid_differences.svg'))
+    plt.show()
+    plt.close(fig)
+
+
 def test_independence_of_entities(dataframe, entity_id, target_column, compositional_columns):
     #This function was created with the help of ChatGpt
 
     #details for results output
     script_path = os.path.abspath(__file__)
     parent_directory = os.path.dirname(os.path.dirname(script_path))
-    output_file = os.path.join(parent_directory, 'Outputs', 'Anova_results.xlsx')
+    output_directory = os.path.join(parent_directory, 'Outputs')
+    output_file = os.path.join(output_directory, 'Assessment_of_entity_dissimilarity.xlsx')
 
     # Firstly, we'd expect the different classes to look different geochemically
     # (otherwise why else would be design a predictive system?)
     # So let's look at each class independently.
     all_classes_anova_results = []
-    #all_classes_tukey_results = []
     all_classes_manova_results=[]
-    for deposit_class in dataframe[target_column].unique():
-        df = dataframe[dataframe[target_column] == deposit_class]
+    for rock_class in dataframe[target_column].unique():
+        df = dataframe[dataframe[target_column] == rock_class]
         df_compositional_data = df[compositional_columns].copy()
-        df_compositional_data[df_compositional_data<=0] = 1e-6
 
         # ILR can't handle zeros, so assign a very small value.
+        df_compositional_data[df_compositional_data<=0] = 1e-6
         closed_df = df_compositional_data.apply(closure, axis=1, result_type='expand')
         closed_df.columns = df_compositional_data.columns
 
@@ -120,7 +156,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         for stat in manova_stat_table.index:
             row = manova_stat_table.loc[stat]
             all_classes_manova_results.append({
-                'Class': deposit_class,
+                'Class': rock_class,
                 'Test': stat,
                 'Value': row['Value'],
                 'F Value': row['F Value'],
@@ -128,6 +164,12 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                 'Den DF': row['Den DF'],
                 'p-value': row['Pr > F']
             })
+
+        #Dataset is not appropriate for pairwise-MANOVA.
+        #To see if most entities differ from one another, or if only 1 or 2 are causing MANOVA to reject
+        #look at differences between centroids in the population.
+        visualise_population_centroid_differences(rock_class, filtered_ilr_df,entity_id, ilr_cols, output_directory)
+
         #  ANOVA
         pvals = []
         col_names = []
@@ -149,7 +191,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         all_anova_results = []
         for col, raw_p,eta_sq, adj_p, rej in zip(col_names, pvals,eta_squared, pvals_corrected, reject):
             all_anova_results.append({
-                'Class': deposit_class,
+                'Class': rock_class,
                 'ILR Coordinate': col,
                 'Raw p-value': raw_p,
                 'Adjusted p-value (Benjamini-Hochberg)': adj_p,
@@ -171,7 +213,6 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         #tukey_df = pd.concat(all_tukey_results, ignore_index=True) if all_tukey_results else pd.DataFrame()
         #all_classes_tukey_results.append(tukey_df)
     anova_df_final = pd.concat(all_classes_anova_results, ignore_index=True)
-    #tukey_df_final = pd.concat(all_classes_tukey_results, ignore_index=True)
     manova_df_final = pd.DataFrame(all_classes_manova_results)
 
     for df in [anova_df_final,manova_df_final]:#tukey_df_final,
@@ -181,3 +222,4 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         anova_df_final.to_excel(writer, sheet_name='ANOVA_results', index=False)
         #tukey_df_final.to_excel(writer, sheet_name='Tukey_results', index=False)
         manova_df_final.to_excel(writer, sheet_name='MANOVA_results', index=False)
+        #manova_pairwise_df_final.to_excel(writer, sheet_name='MANOVA_pairwise', index=False)

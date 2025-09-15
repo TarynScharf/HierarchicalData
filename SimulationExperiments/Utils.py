@@ -498,7 +498,7 @@ def data_creation_and_prediction(intraclass_variability,interclass_variability,n
 
 
 class TestResults:
-    list_sl_predictions = []
+    list_el_predictions = []
     list_ol_predictions = []
     list_data_for_plotting = []
 
@@ -537,8 +537,10 @@ def execute_test(
         # Each iteration will be repeated 10 times and the mse and mape value averaged
         list_mse_el=[]
         list_mse_ol=[]
-        list_holdout_mse_el = []
-        list_holdout_mse_ol = []
+
+        if hold_out_data:
+            list_holdout_mse_el = []
+            list_holdout_mse_ol = []
 
         for j in range(runs_per_iteration): # tqdm(range(10), desc='Executing...'):
 
@@ -574,7 +576,7 @@ def execute_test(
                 #Save the iteration's data for plotting pairplots and dataset boxplots (optional)
                 #Save only the first dataset produced, as an example to visualise in plotting, as the iteration is repeated 10 times
                 results.list_data_for_plotting.append(entity_observation_pairs)
-                results.list_sl_predictions.append(el_predictions)
+                results.list_el_predictions.append(el_predictions)
                 results.list_ol_predictions.append(ol_predictions)
 
             list_mse_el.append(el_predictions.mse)
@@ -586,8 +588,9 @@ def execute_test(
         results.ave_mse_ol.append(statistics.mean(list_mse_ol))
         results.ave_mse_ol_5.append(np.percentile(list_mse_ol, 5))
         results.ave_mse_ol_95.append(np.percentile(list_mse_ol, 95))
-        results.hold_out_mse_el.append(statistics.mean(list_holdout_mse_el))
-        results.hold_out_mse_ol.append(statistics.mean(list_holdout_mse_ol))
+        if hold_out_data:
+            results.hold_out_mse_el.append(statistics.mean(list_holdout_mse_el))
+            results.hold_out_mse_ol.append(statistics.mean(list_holdout_mse_ol))
 
         if increment is not None:
             match increment_type:
@@ -609,10 +612,10 @@ def execute_test(
                 case IncrementType.NONE:
                     continue
 
-    if reporting:
-        results.list_sl_predictions = None
+    '''if reporting:
+        results.list_el_predictions = None
         results.list_ol_predictions = None
-        results.list_data_for_plotting = None
+        results.list_data_for_plotting = None'''
 
     return results
 

@@ -14,7 +14,7 @@ from statsmodels.formula.api import ols
 from statsmodels.multivariate.manova import MANOVA
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
-
+from itertools import combinations
 
 def plot_cv_results(entity_results, observation_results,title):
     mpl.rcParams['svg.fonttype'] = 'none'
@@ -39,14 +39,15 @@ def plot_cv_results(entity_results, observation_results,title):
     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
 
     ## List 1: Histogram + KDE
-    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5)
+    sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.01)
     axes.axvline(median1, color='red', linestyle='--', label=f'ES median = {median1:.2f}')
+    axes.axvline(0.91, color='black', linestyle=':', label=f'Wen et al. (2024) = 0.91')
     ax_2 = axes.twinx()
     sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
     axes.legend()
 
     # List 2: Histogram + KDE
-    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line)
+    sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line, binwidth = 0.01)
     axes.axvline(median2, color='blue', linestyle='--', label=f'OS median = {median2:.2f}')
     sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
     axes.legend()
@@ -212,20 +213,21 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
     #details for results output
     script_path = os.path.abspath(__file__)
     parent_directory = os.path.dirname(script_path)
-    output_file = os.path.join(parent_directory, 'Outputs', 'Anova_results.xlsx')
+    output_file = os.path.join(parent_directory, 'Outputs', 'Assessment_of_entity_dissimilarity.xlsx')
 
     # Firstly, we'd expect the different classes to look different geochemically
-    # (otherwise why else would be design a predictive system?)
+    # (otherwise why else would we design a predictive system?)
     # So let's look at each class independently.
     all_classes_anova_results = []
     all_classes_tukey_results = []
     all_classes_manova_results=[]
+    all_classes_manova_pairwise = []
     for deposit_class in dataframe[target_column].unique():
         df = dataframe[dataframe[target_column] == deposit_class]
         df_compositional_data = df[compositional_columns].copy()
-        df_compositional_data[df_compositional_data<=0] = 1e-6
 
         # ILR can't handle zeros, so assign a very small value.
+        df_compositional_data[df_compositional_data<=0] = 1e-6
         closed_df = df_compositional_data.apply(closure, axis=1, result_type='expand')
         closed_df.columns = df_compositional_data.columns
 
@@ -252,6 +254,30 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                 'Den DF': row['Den DF'],
                 'p-value': row['Pr > F']
             })
+
+        # --- MANOVA Pairwise ---
+        unique_entities = ilr_df[entity_id].unique()
+        pairwise_combinations = list(combinations(unique_entities, 2))
+        for group1, group2 in pairwise_combinations:
+            pair_df = ilr_df[ilr_df[entity_id].isin([group1, group2])].copy()
+            formula_pair = f"{' + '.join(ilr_cols)} ~ {entity_id}"
+            manova_pair = MANOVA.from_formula(formula_pair, data=pair_df)
+            manova_pair_summary = manova_pair.mv_test()
+            stat_table = manova_pair_summary.results[entity_id]['stat']
+            for stat in stat_table.index:
+                row = stat_table.loc[stat]
+                all_classes_manova_pairwise.append({
+                    'Class': deposit_class,
+                    'Entity 1': group1,
+                    'Entity 2': group2,
+                    'Test': stat,
+                    'Value': row['Value'],
+                    'F Value': row['F Value'],
+                    'Num DF': row['Num DF'],
+                    'Den DF': row['Den DF'],
+                    'P-value': row['Pr > F'],
+                    'Reject': True if row['Pr > F'] <0.05 else False
+                })
 
         ## --- ANOVA + Tukey ---
         pvals = []
@@ -301,11 +327,13 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
     anova_df_final = pd.concat(all_classes_anova_results, ignore_index=True)
     tukey_df_final = pd.concat(all_classes_tukey_results, ignore_index=True)
     manova_df_final = pd.DataFrame(all_classes_manova_results)
+    manova_pairwise_df_final = pd.DataFrame(all_classes_manova_pairwise)
 
-    for df in [anova_df_final,tukey_df_final,manova_df_final]:
+    for df in [anova_df_final,tukey_df_final,manova_df_final, manova_pairwise_df_final]:
         df['Class'] = df['Class'].replace({0: 'I', 1: 'II', 2: 'III', 3: 'IV', 4: 'V'})
 
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         anova_df_final.to_excel(writer, sheet_name='ANOVA_results', index=False)
         tukey_df_final.to_excel(writer, sheet_name='Tukey_results', index=False)
         manova_df_final.to_excel(writer, sheet_name='MANOVA_results', index=False)
+        manova_pairwise_df_final.to_excel(writer, sheet_name='MANOVA_pairwise', index=False)

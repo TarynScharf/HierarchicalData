@@ -71,14 +71,14 @@ class FictitiousSamplerPredictive(AbstractSampler[InitialConditions, Observation
         feature1_observations = scipy.stats.uniform.rvs(loc=1, scale=4, size=number_of_analyses)
 
         # A feature influenced by all 3 initial conditions
-        feature2 = (0.5 * (conditions.variable1+conditions.variable2) + 0.4 * conditions.variable1 + 3.2) + 0.2*(conditions.variable2 + conditions.variable3)
+        feature2 = (0.5 * (coefficient*conditions.variable1+conditions.variable2) + 0.4 * coefficient*conditions.variable1 + 3.2) + 0.2*(conditions.variable2 + conditions.variable3)
         feature2_skewness = 10
         feature2_noise = scipy.stats.skewnorm.rvs(loc=0, a=feature2_skewness,scale=self.intraclass_variability,size=number_of_analyses)
         feature2_observations =feature2 + feature2_noise
 
         # A feature derived from features 1 and 2
         feature3_noise = scipy.stats.norm.rvs(loc=1,scale=self.intraclass_variability,size=number_of_analyses)
-        feature3_observations = 0.5 * conditions.variable1 + 0.3 * conditions.variable2 + 0.2 * conditions.variable3 + feature3_noise
+        feature3_observations = 0.5 * coefficient*conditions.variable1 + 0.3 * conditions.variable2 + 0.2 * conditions.variable3 + feature3_noise
 
         # A feature influenced by initial conditions (variables 1 and 3)
         feature4_skewness = 7

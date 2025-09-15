@@ -4,14 +4,19 @@ from Utils import create_output_subfolders, execute_test, plot_subsampling_resul
 
 '''
 Hypothesis: 
-    Geoscience data is often genetically structured. Splitting by observation allows for data leakage because of
-    these genetic relationships. This data leakage results in inflated performance measurements.	
-    The size of this effect decreases when the number of entities is increased, not the number of observations
+    Geoscience data is often genetically structured. The phenomenon of data leakage due to hierarchical structuring can 
+    occur in both many-to-one relationships (e.g. data from many minerals used to predict a value about the single source 
+    rock) and one-to-one (e.g. data from a mineral used to predict another characteristic about that same mineral). 
+    As observations are constructed using entity latent variables, observations from a given entity are expected to be 
+    more like one another, and less like observations derived from a separate entity. Consequently, hierarchical data 
+    structures should be considered when splitting data in a one-to-one predictive relationship.
 Test:
     Create multiple entities and test model performance with observation-level and entity-level data splitting.
-    The test is repeated 100 times and the resultant MSE values are presented in box-plot format.
     In each iteration, the amount of entities, onbservations, and intersample variance remains constant.
     The intrasample variance increases in each iteration.
+    This is a replicate of Experiment 3.1 but instead of predicting variable 1 we are predicting feature 2.
+    I.e. 3 features of an observation are used to predict the 2nd feature. 
+    This is a many-to-many relationship in the sense that the predictive value is not constant for multiple observations.
 '''
 
 # Set up number of test iterations
@@ -24,9 +29,9 @@ intraclass_variability=0.5
 interclass_variability=3
 coefficient=1
 runs_per_iteration= 100
-test_name = 'Test3a'
+test_name = 'Test5d'
 reporting = False
-target_variable = 'variable1'
+target_variable = 'feature4'
 
 parameter_dict= {
     'number_of_test_iterations': [number_of_test_iterations],
@@ -42,7 +47,6 @@ parameter_dict= {
     'reporting': [reporting],
     'target_variable': [target_variable]
 }
-
 
 # Create output folder each time the script is run
 results_folder,supporting_data_folder = create_output_subfolders(parameter_dict, parent_folder='Outputs', name=test_name)
@@ -62,7 +66,6 @@ results = execute_test(
     reporting,
     runs_per_iteration
 )
-
 
 #Plot line plots of mse vs iterations
 lineplots_of_prediction_metrics(
@@ -105,13 +108,11 @@ if reporting:
         interclass_variability,
         intraclass_variability,
         coefficient,
-        list_el_predictions,
-        list_ol_predictions,
+        results.list_el_predictions,
+        results.list_ol_predictions,
         supporting_data_folder,
         increment_type,
         increment
     )
 
 print('Complete')
-
-
