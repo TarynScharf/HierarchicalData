@@ -1,4 +1,4 @@
-Case study 2 in manuscript "Hierarchically structured data can undermine machine learning results in geoscience", by Scharf, Daggitt, Doucet and Kirkland.
+Case study 2 in manuscript "Hierarchically structured data can undermine machine learning results in geoscience", by Scharf, Daggitt, Kirkland and Doucet.
 This is 1) a reproduction and 2) an edit of code published by Wang et al. (2024). We look only at the model for the first step of zircon classification.
 This work was completed using Python 3.13 in PyCharm 2024.3.4 (Community Edition).
 
