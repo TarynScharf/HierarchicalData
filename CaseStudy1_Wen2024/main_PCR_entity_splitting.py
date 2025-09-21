@@ -205,7 +205,7 @@ if __name__ == '__main__':
 
         #entity_split kfold
         #There are only 3 entities in class V. Consequently, we're limited to 3 splits.
-        #StratifiedGroupKFold does struggles to both stratify and maintain groups, meaning that some folds return nan values
+        #StratifiedGroupKFold struggles to both stratify and maintain groups, meaning that some folds return nan values
         #I could use GroupKFold, but this does not stratify, and stratification was part of the original methodology of Wen et al. (2024)
         #Consequently, I have created a custom kf generator that will stratify and honour groups
         kf_entity = custom_stratified_group_kfold(df, 'Deposit', n_splits=3, seed = repeat)#GroupKFold(n_splits=3, shuffle=True, random_state=repeat) #

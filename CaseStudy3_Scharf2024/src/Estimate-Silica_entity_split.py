@@ -23,7 +23,6 @@ from tensorflow.keras.layers.experimental import preprocessing
 import tensorflow.keras.backend as K
 from custom_functions import custom_stratified_train_test_split, custom_stratified_group_kfold,plot_cv_results, linear_regression_of_prediction_results,test_independence_of_entities
 
-
 def pca(df, features, ML_features=None, keep_columns = None, pca_model = None, scaling_data = None, output_location = None):
     #it's at this point that sampleid, bin, and CL textures are removed. Only shape and possibly U&Th (depending on the ML_features variable passed) form part of x, created below
     df.reset_index(drop=True, inplace=True)
@@ -271,7 +270,7 @@ def balance_classes_with_aggregates(df, zircons_required_per_class,N=3):
     list_of_unique_sampleids = list(pd.unique(zircons_per_sample['GSWA_sample_id']))
     aggregates=[]
     for sample_id in list_of_unique_sampleids:
-        # isolate the sample in it's own dataframe
+        # isolate the sample in its own dataframe
         df_sampleid = df.loc[df['GSWA_sample_id'] == sample_id]
         df_sampleid.reset_index(drop=True, inplace=True)
 
@@ -316,15 +315,15 @@ def load_dataset(filepath, outliers, columns,UTH, all_data=True):
         df_outliers_removed = df
 
     if UTH:
-        #drop all rows that aren't analysed for U and Th
+        # drop all rows that aren't analysed for U and Th
         df_complete = df_outliers_removed.dropna(how='any')
         df_complete.reset_index(drop=True, inplace=True)
     elif UTH == False and all_data == False:
-        #drop all rows that aren't analysed for U and Th, even though the scenario doesn't specifically require analysed grains only
+        # drop all rows that aren't analysed for U and Th, even though the scenario doesn't specifically require analysed grains only
         df_complete = df_outliers_removed.dropna(how='any')
         df_complete.reset_index(drop=True, inplace=True)
     else:
-        #use all zircon in the datas set, for the scenario
+        # use all zircon in the datas set, for the scenario
         df_complete = df_outliers_removed
 
     return df_complete
@@ -458,15 +457,18 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
     test_OG = pd.concat([x_test_OG,y_test_OG], axis=1)
     train_OG = pd.concat([x_train_OG, y_train_OG], axis=1)
 
-    ## Entity-split test set
+    # Entity-split test set
+    #print out entities per bin
+    print(df.groupby(['bin'])['SiO2_pct'].nunique())
     train_entity, test_entity = custom_stratified_train_test_split(dataframe=df, sample_id_column='GSWA_sample_id',
                                                                    stratify_column='bin', fraction=test_split_size)
-
+    print('training subset: ', train_entity.groupby(['bin'])['SiO2_pct'].nunique())
+    print('testing subset: ', test_entity.groupby(['bin'])['SiO2_pct'].nunique())
     #4.1 - balance classes
     zircons_required_per_bin = calculate_number_of_zircon_required_to_balance_each_class(train_OG,resampling_repeats)
     train_balanced_classes = balance_classes_with_aggregates(train_OG, zircons_required_per_bin, N=aggregate_size)
 
-    ## entity balance classes
+    # entity balance classes
     zircons_required_per_bin_entity = calculate_number_of_zircon_required_to_balance_each_class(train_entity,resampling_repeats)
     train_balanced_classes_entity = balance_classes_with_aggregates(train_entity, zircons_required_per_bin_entity,N=aggregate_size)
 
@@ -474,20 +476,20 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
     train_balanced_classes['Dataset'] = 'train'
     test_OG['Dataset'] = 'test'
 
-    ## entity label datasets
+    # entity label datasets
     train_balanced_classes_entity['Dataset'] = 'train'
     test_entity['Dataset'] = 'test'
 
     #4.3 - recombine the train and test subsets for PCA
     df_train_test = pd.concat([train_balanced_classes,test_OG], ignore_index=True)
 
-    ## entity recombine the train and test subsets for PCA
+    # entity recombine the train and test subsets for PCA
     df_train_test_entity = pd.concat([train_balanced_classes_entity, test_entity], ignore_index=True)
 
     #4.4 - PCA on train and test data
     df_pca, pca_loadings = pca(df_train_test, pca_features, ML_features, keep_columns=['SiO2_pct', 'Dataset', 'GSWA_sample_id'], pca_model = None, scaling_data = None, output_location=location)
 
-    ## Entity - PCA on train and test data
+    # Entity - PCA on train and test data
     keep_columns = ['SiO2_pct', 'Dataset', 'GSWA_sample_id', 'bin']
     df_pca_entity, pca_loadings_entity = pca(df_train_test_entity, pca_features, ML_features,
                                              keep_columns, pca_model=None, scaling_data=None, output_location=location)
@@ -507,7 +509,7 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
     x_test_pca = df_test_pca[fields]
     y_test_pca = df_test_pca[['SiO2_pct']]
 
-    ## Entity separate into train and test datasets again
+    # Entity separate into train and test datasets again
     df_train_pca_entity = df_pca_entity[df_pca_entity['Dataset'] == 'train']
     df_train_pca_entity = df_train_pca_entity.sample(frac=1).reset_index(drop=True)
     df_test_pca_entity = df_pca_entity[df_pca_entity['Dataset'] == 'test']
@@ -519,11 +521,11 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
     #df_pca.to_csv(os.path.join(location,f'ModelInputs.csv'))
     #df_train_test.to_csv(os.path.join(location,f'PCAInputs.csv'))
 
-    # test the independence of entities
+    # Test the independence of entities
     # Use the pca dataframe, as the original shape measurements are highly correlated but the principal components are not.
-    df_pca_entity.columns = [col[0] if isinstance(col, tuple) else col for col in df_pca_entity.columns]
-    df_continuous_values_only = df_pca_entity[[col for col in df_pca_entity.columns if col not in ['oscillatory_zonation', 'sector_zonation','homogenous_zonation', 'Dataset']]]
-    test_independence_of_entities(dataframe=df_continuous_values_only, entity_id='GSWA_sample_id',target_column='SiO2_pct', class_column='bin', output_location=location)
+    #df_pca_entity.columns = [col[0] if isinstance(col, tuple) else col for col in df_pca_entity.columns]
+    #df_continuous_values_only = df_pca_entity[[col for col in df_pca_entity.columns if col not in ['oscillatory_zonation', 'sector_zonation','homogenous_zonation', 'Dataset']]]
+    #test_independence_of_entities(dataframe=df_continuous_values_only, entity_id='GSWA_sample_id',target_column='SiO2_pct', class_column='bin', output_location=location)
 
     if Test == 'Optuna':
         # Set up and run the Optuna optimisation
@@ -547,9 +549,12 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
         results_entity = []
         metrics_entity = []
 
-        # I want to repeat the kfold procedure 10 times
+        # I want to repeat the 3-fold kfold procedure 10 times
+        print(df_train_pca_entity.groupby(['bin'])['GSWA_sample_id'].nunique())
+
         for repeat in range(10):
-            kfold = KFold(n_splits=10, shuffle=True, random_state=repeat)
+
+            kfold = KFold(n_splits=3, shuffle=True, random_state=repeat)
             #results = []
             #metrics = []
             for i, (train_index, test_index) in enumerate(kfold.split(x_train_pca, y_train_pca)):
@@ -573,9 +578,11 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
                 results_observation.append(fold_results)
                 metrics_observation.append(fold_metrics)
 
-            for i, (train_index, test_index) in enumerate(custom_stratified_group_kfold(dataframe=df_train_pca_entity,
-                                                                                        entity_identifier_column = 'GSWA_sample_id', class_column='bin',
-                                                                                        n_splits=10, seed=repeat)):
+            custom_folds = custom_stratified_group_kfold(dataframe=df_train_pca_entity,
+                                      entity_identifier_column='GSWA_sample_id', class_column='bin',
+                                      n_splits=3, seed=repeat)
+
+            for i, (train_index, test_index) in enumerate(custom_folds):
                 xtrain, xval = df_train_pca_entity.iloc[train_index][fields], df_train_pca_entity.iloc[test_index][fields]
                 ytrain, yval = (df_train_pca_entity.iloc[train_index,df_train_pca_entity.columns.get_loc('SiO2_pct')],
                                 df_train_pca_entity.iloc[test_index,df_train_pca_entity.columns.get_loc('SiO2_pct')])
@@ -598,7 +605,7 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
                 results_entity.append(fold_results)
                 metrics_entity.append(fold_metrics)
 
-            date = get_date_time()
+            '''date = get_date_time()
             with open(os.path.join(location, f'observation_{description}_{date}.csv'), 'a', newline='') as f:
                 for i in range(len(results_observation)):
                     f.write(f'FOLD {i + 1} \n')
@@ -614,27 +621,25 @@ def train_test_model(scenario,cap_data, input_data_filepath, aggregate_size, res
                         df.to_csv(f)
                         f.write("\n")
                         metrics_entity[i].to_csv(f)
-                        f.write("\n")
+                        f.write("\n")'''
 
-            # Creating dataframes for plotting purposes
-            all_metrics_entity = pd.concat(metrics_entity, ignore_index=True)
-            all_metrics_entity.to_csv(os.path.join(location, 'entity_metrics_all.csv'))
+        # Creating dataframes for plotting purposes
+        all_metrics_entity = pd.concat(metrics_entity, ignore_index=True)
+        all_metrics_entity.to_csv(os.path.join(location, 'entity_metrics_all.csv'))
+        all_results_entity = pd.concat([item[0] for item in results_entity], ignore_index=True)
+        all_results_entity.to_csv(os.path.join(location, 'entity_results_all.csv'))
 
-            all_metrics_observation = pd.concat(metrics_observation, ignore_index=True)
-            all_metrics_observation.to_csv(os.path.join(location, 'observation_metrics_all.csv'))
+        all_metrics_observation = pd.concat(metrics_observation, ignore_index=True)
+        all_metrics_observation.to_csv(os.path.join(location, 'observation_metrics_all.csv'))
+        all_results_observation = pd.concat([item[0] for item in results_observation], ignore_index=True)
+        all_results_observation.to_csv(os.path.join(location, 'observation_results_all.csv'))
 
-            all_results_entity = pd.concat([item[0] for item in results_entity], ignore_index=True)
-            all_results_entity.to_csv(os.path.join(location, 'entity_results_all.csv'))
+        plot_cv_results(all_metrics_entity['mse'], all_metrics_observation['mse'],
+                        title='Cross-validation results', output_location=location)
+        linear_regression_of_prediction_results(all_results_entity, all_results_observation,
+                                                output_location=location)
 
-            all_results_observation = pd.concat([item[0] for item in results_observation], ignore_index=True)
-            all_results_observation.to_csv(os.path.join(location, 'observation_results_all.csv'))
-
-            plot_cv_results(all_metrics_entity['mse'], all_metrics_observation['mse'],
-                            title='Cross-validation results', output_location=location)
-            linear_regression_of_prediction_results(all_results_entity, all_results_observation,
-                                                    output_location=location)
-
-            return
+        return
 
     elif Test == 'Test':
         if model_filepath is None:
@@ -710,7 +715,7 @@ def apply_model(use_UTH,use_CL,model_path,dataset_for_pca_loadings,data_columns,
     else:
         df_data = df_data_all
 
-    # The new data must be scale by the model's training dataset. Hence scaling_data is used in this funcition
+    # The new data must be scaled by the model's training dataset. Hence scaling_data is used in this funcition
     df_data_pca,_ = pca(df_data, pca_features, ML_features, keep_columns=keep_columns, pca_model=pca_loadings, scaling_data=df_for_pca,output_location=output_location)
     #3 - create x data sets for prediction
     if use_CL:
@@ -1028,12 +1033,12 @@ train_test_model(
     input_data_filepath=os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),'Data_files','Dataset.csv'),  # update the file path to the input data file
     aggregate_size=2, #number of zircon to aggregate to create an additional data point
     resampling_repeats=2, #factor by which the largest silica bin is increased
-    test_split_size=0.13,#0.1,  #percentage of data set to keep aside as a test subset
+    test_split_size=0.2,#percentage of data set to keep aside as a test subset
     CL=use_CL, # whether or not to use cathodoluminescence texture
     UTH=use_UTH, # whether or not to use U and Th data per grain
     all_data=use_all_data, #For scenarios that don't use U and Th, choose whether to test on all the data or the analysis-constrained data
     outliers_to_remove= None,  # list any outlier sample ID to remove. Provide this input as an array e.g. [180933,168936]
-    epochs=200, #How many epochs to train for (early-stopping is applied, though)
+    epochs=200, #200, #How many epochs to train for (early-stopping is applied, though)
     n_trials=2, #Number of Optuna trials to run
     batchsize=32, #batchsize of 32 is the Tensorflow default
     Test = 'Kfold',#Indicates wich action to take. Options: 'Optuna', 'Kfold', 'Test'. If not specified, the function exits once data sets are created.

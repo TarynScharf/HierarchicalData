@@ -26,7 +26,7 @@ def select_data(data, index_array,sample_id_column,target_column):
 
 def custom_stratified_train_test_split(dataframe, sample_id_column, stratify_column, fraction):
     unique_samples = dataframe[[sample_id_column, stratify_column]].drop_duplicates()
-    #TODO I removed the random_state so that multiple iterations will sample differently
+    # I removed the random_state so that multiple iterations will sample differently
     train_sample_ids, test_sample_ids = train_test_split(
         unique_samples,
         stratify=unique_samples[stratify_column],
@@ -81,9 +81,8 @@ def custom_stratified_group_kfold(dataframe, entity_identifier_column, class_col
             folds[i].extend(fold_indices[i])
 
     # Create a list of (train_indices, test_indices) for each fold
-    splits = []
     for i in range(n_splits):
-        #Collect the sample id's associated with the train and test split
+        # Collect the sample id's associated with the train and test split
         test_samples = unique_samples.loc[folds[i], entity_identifier_column]
         train_samples = unique_samples[~unique_samples.index.isin(folds[i])][entity_identifier_column]
         no_overlap = not test_samples.isin(train_samples).any()
@@ -94,9 +93,9 @@ def custom_stratified_group_kfold(dataframe, entity_identifier_column, class_col
             break
         else:
 
-            #Using those sample id's, find the indices of observations related to the sample id's in the original dataframe
-            test_indices = dataframe[dataframe[entity_identifier_column].isin(test_samples)].index #np.array(folds[i])
-            train_indices = dataframe[dataframe[entity_identifier_column].isin(train_samples)].index#np.array([idx for j in range(n_splits) if j != i for idx in folds[j]])
+            # Using those sample id's, find the indices of observations related to the sample id's in the original dataframe
+            test_indices = dataframe[dataframe[entity_identifier_column].isin(test_samples)].index
+            train_indices = dataframe[dataframe[entity_identifier_column].isin(train_samples)].index
             yield(train_indices, test_indices)
 
 def plot_cv_results(entity_results, observation_results,title, output_location):
@@ -118,26 +117,48 @@ def plot_cv_results(entity_results, observation_results,title, output_location):
     df_results = pd.DataFrame({'ENTITY_F1':entity_results, 'OBSERVATION_F1':observation_results})
     df_results.to_csv(os.path.join(parent_directory, 'Outputs',output_location, 'F1_crossvalidation_results.csv'))
 
-    # Create subplots
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54), sharex=True)
+    '''axes = axes.ravel()
+    # List 1: Histogram + KDE
+    sns.histplot(entity_results, kde=False, ax=axes[0], stat='count', color=red_envelope, edgecolor='black', alpha=0.5, binwidth=0.5)
+    axes[0].axvline(median1, color='red', linestyle='--', label=f'ES median: {median1:.2f}')
+    sns.histplot(observation_results, kde=False, ax=axes[0], stat='count', color=blue_envelope, edgecolor=blue_line,binwidth=0.5)
+    axes[0].axvline(median2, color='blue', linestyle='--', label=f'OS median: {median2:.2f}')
+    axes[0].legend()
+    
+    sns.kdeplot(entity_results, ax=axes[1], color=red_line, linewidth=2)
+    axes[1].axvline(x=3.12 ** 2, color='black', linestyle=':', label=f'Scharf et al. (2024): {3.12 ** 2:.2f}')
+    axes[1].legend()
+    
+    sns.kdeplot(observation_results, ax=axes[2], color=blue_line, linewidth=2)
+    axes[2].set_xlabel('Mean squared error')
+    axes[2].legend()
+   
+    # Add the reference line for Scharf et al. (2024)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.savefig(os.path.join(parent_directory, 'Outputs', output_location, f'{title}.svg'))
+    plt.show()
+    plt.close(fig)'''
 
-    ## List 1: Histogram + KDE
+
+    # Create subplots
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54), sharex=True)
+    # List 1: Histogram + KDE
     sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.5)
     axes.axvline(median1, color='red', linestyle='--', label=f'ES median: {median1:.2f}')
     ax_2 = axes.twinx()
     sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
-    axes.legend()
+
 
     # List 2: Histogram + KDE
     sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line, binwidth = 0.5)
     axes.axvline(median2, color='blue', linestyle='--', label=f'OS median: {median2:.2f}')
     sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
-    axes.legend()
     axes.set_xlabel ('Mean squared error')
 
-    #Add the reference line for Scharf et al. (2004)
+    #Add the reference line for Scharf et al. (2024)
     axes.axvline(x = 3.12**2, color='black', linestyle=':', label=f'Scharf et al. (2024): {3.12**2:.2f}')
-
+    axes.legend()
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(os.path.join(parent_directory, 'Outputs',output_location,f'{title}.svg'))
     plt.show()
@@ -145,7 +166,6 @@ def plot_cv_results(entity_results, observation_results,title, output_location):
 
 def return_regression_results(dataframe):
     #scharf et al. (2024) report median prediction for a sample vs sample actual
-
     #Thus sort dataframe by actual (same sample will have the same SiO2 value for all zircon) per kfold iteration (fold per repeat)
     dataframe.sort_values(by=['repeat', 'fold', 'actual'])
 
@@ -158,16 +178,9 @@ def return_regression_results(dataframe):
     y_model = slope * x + intercept
     r_squared = r_value ** 2
 
-    #to help the hexplot display clearly in the silica range of interested, I'm going to clip values to 45-70
-    data_clipped = median_df[(median_df['predicted']<=70) & (median_df['predicted']>=45)]
-    x_clipped = median_df['actual']
-    y_clipped = median_df['predicted']
-    y_model_clipped = slope * x + intercept
-
-    return x, y, y_model, r_squared, x_clipped, y_clipped, y_model_clipped
+    return x, y, y_model, r_squared
 
 def linear_regression_of_prediction_results(entity_df, observation_df, output_location):
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     mpl.rcParams['svg.fonttype'] = 'none'
     mpl.rcParams['font.family'] = 'Arial'
@@ -176,15 +189,11 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     red_line = (206 / 255, 61 / 255, 48 / 255, 0.9)  # rgba
     blue_line = (29 / 255, 66 / 255, 115 / 255, 0.9)
 
-    entity_x, entity_y, entity_model_y, entity_r_squared, ent_x_clipped, ent_y_clipped, ent_y_model_clipped = return_regression_results(entity_df)
-    observation_x, observation_y, observation_model_y, observation_r_squared, obs_x_clipped, obs_y_clipped, obs_y_model_clipped = return_regression_results(observation_df)
+    entity_x, entity_y, entity_model_y, entity_r_squared = return_regression_results(entity_df)
+    observation_x, observation_y, observation_model_y, observation_r_squared = return_regression_results(observation_df)
 
     # Create subplots
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12 / 2.54, 12 / 2.54))
-    #hxb_entity = axes[0].hexbin(ent_x_clipped, ent_y_clipped, gridsize=50, cmap='Reds')
-    #axes[0].set_aspect('equal', adjustable='box')
-    #axes[0].set_xlim(45, 70)  # Example x-axis limits
-    #axes[0].set_ylim(45, 70)
     axes[0].scatter(entity_x, entity_y, color=red_line, s=16)
     axes[0].plot(entity_x, entity_model_y, color =red_line, label=f'Entity-split R2:{entity_r_squared:.1f} ' )
     axes[0].set_title('Entity-level splitting')
@@ -193,15 +202,7 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     axes[0].set_ylabel('Predicted whole-rock silica (%)')
     axes[0].set_xlim(40, 80)
     axes[0].set_ylim(40, 80)
-    #divider_entity = make_axes_locatable(axes[0])
-    #cax_ent = divider_entity.append_axes("right", size="5%", pad=0.05)
-    #cbar_entity = fig.colorbar(hxb_entity, cax=cax_ent)
-    #cbar_entity.set_label("Counts")
 
-    #hxb_observation = axes[1].hexbin(obs_x_clipped, obs_y_clipped, gridsize=(50), cmap='Blues')
-    #axes[1].set_aspect('equal', adjustable='box')
-    #axes[1].set_xlim(45, 70)  # Example x-axis limits
-    #axes[1].set_ylim(45, 70)
     axes[1].scatter(observation_x, observation_y, color=blue_line, s=16)
     axes[1].plot(observation_x, observation_model_y, color=blue_line, label=f'Observation-split R2:{observation_r_squared:.1f} ')
     axes[1].set_title('Observation-level splitting')
@@ -210,10 +211,6 @@ def linear_regression_of_prediction_results(entity_df, observation_df, output_lo
     axes[1].set_ylabel('Predicted whole-rock silica (%)')
     axes[1].set_xlim(40, 80)
     axes[1].set_ylim(40, 80)
-    #divider_obs = make_axes_locatable(axes[1])
-    #cax_obs = divider_obs.append_axes("right", size="5%", pad=0.05)
-    #cbar_obs = fig.colorbar(hxb_observation, cax=cax_obs)
-    #cbar_obs.set_label("Counts")
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     script_path = os.path.abspath(__file__)
@@ -233,8 +230,8 @@ def test_independence_of_entities(dataframe, entity_id, target_column,class_colu
     # Firstly, we'd expect the different classes to look different geochemically
     # (otherwise why else would be design a predictive system?)
     # So let's look at each class independently.
-    #In this study, classes are the 'bins' assigned to zircon. I.e. we will consider each silica bin separately as the study expects zircon from high silica rocks to look
-    #different to those from lower silica rocks
+    # In this study, classes are the 'bins' assigned to zircon. I.e. we will consider each silica bin separately as the study expects zircon from high silica rocks to look
+    # different to those from lower silica rocks
 
     # Putting all features on the same scale
     scaler = StandardScaler()
@@ -246,7 +243,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column,class_colu
     for silica_class in dataframe[class_column].unique():
         df = dataframe[dataframe[class_column] == silica_class]
 
-        #Let's keep only those groups with 10 or more data points.
+        # Let's keep only those groups with 10 or more data points.
         filtered_df = df[df.groupby(entity_id)[entity_id].transform('count') >= 10]
         feature_cols = [col for col in filtered_df.columns if col not in (entity_id, class_column, target_column)]
 

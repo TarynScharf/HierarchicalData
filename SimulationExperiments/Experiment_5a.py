@@ -11,8 +11,8 @@ Hypothesis:
     structures should be considered when splitting data in a one-to-one predictive relationship.
 Test:
     Create multiple entities and test model performance with observation-level and entity-level data splitting.
-    This is a replicate of Experiment 1, but instead of predicting variable 1 we are predicting feature 2.
-    I.e. 3 features of an observation are used to predict the 2nd feature of that same observation. 
+    This is a replicate of Experiment 1, but instead of predicting variable 1 we are predicting feature 4.
+    I.e. 3 features of an observation are used to predict the 4th feature of that same observation. 
     This is a many-to-many relationship in the sense that the predictive value is not constant for multiple observations.
 '''
 

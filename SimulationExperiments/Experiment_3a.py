@@ -9,7 +9,7 @@ Hypothesis:
     thus prediction uncertainty on new entities. 
 Test:
     Create multiple entities and test model performance with observation-level and entity-level data splitting.
-    In each iteration, the amount of entities, onbservations, and intersample variance remains constant.
+    In each iteration, the amount of entities, observations, and intersample variance remains constant.
     The intrasample variance increases in each iteration.
 '''
 

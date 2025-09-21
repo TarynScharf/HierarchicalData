@@ -269,7 +269,7 @@ def balance_classes_with_aggregates(df, zircons_required_per_class,N=3):
     list_of_unique_sampleids = list(pd.unique(zircons_per_sample['GSWA_sample_id']))
     aggregates=[]
     for sample_id in list_of_unique_sampleids:
-        # isolate the sample in it's own dataframe
+        # isolate the sample in its own dataframe
         df_sampleid = df.loc[df['GSWA_sample_id'] == sample_id]
         df_sampleid.reset_index(drop=True, inplace=True)
 

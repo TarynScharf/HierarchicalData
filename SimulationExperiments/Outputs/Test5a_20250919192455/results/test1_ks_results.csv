@@ -1,0 +1,7 @@
+,Pair,Statistic,P-Value,Adjusted_P_Value,Reject_Null_(Adj)
+0,entity_mse vs hold_out_entity_mse,0.023,0.9542189106778983,1.0,False
+1,entity_mse vs observation_mse,0.392,5.998653083597018e-69,3.5991918501582106e-68,True
+2,entity_mse vs hold_out_observation_mse,0.071,0.012912352230759101,0.07747411338455461,False
+3,hold_out_entity_mse vs observation_mse,0.389,7.1128978872759734e-68,4.267738732365584e-67,True
+4,hold_out_entity_mse vs hold_out_observation_mse,0.078,0.004543821879051605,0.027262931274309628,True
+5,observation_mse vs hold_out_observation_mse,0.337,1.0617870216507167e-50,6.370722129904301e-50,True

@@ -36,12 +36,9 @@ def plot_cv_results(entity_results, observation_results,title):
 
     red_line = (206 / 255, 61 / 255, 48 / 255, 0.9)  # rgba
     red_envelope = (242 / 255, 71 / 255, 56 / 255, 0.6)
-    red_marker_fill = (242 / 255, 143 / 255, 107 / 255, 1.0)
 
     blue_line = (29 / 255, 66 / 255, 115 / 255, 0.9)
     blue_envelope = (4 / 255, 196 / 255, 217 / 255, 0.6)
-    blue_marker_fill = (4 / 255, 196 / 255, 217 / 255, 1.0)
-    purple_line = (114 / 255, 62 / 255, 152 / 255, 1.0)
 
     median1 = np.median(entity_results)
     median2 = np.median(observation_results)
@@ -54,20 +51,17 @@ def plot_cv_results(entity_results, observation_results,title):
     # Create subplots
     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
 
-    ## List 1: Histogram + KDE
+    # List 1: Histogram + KDE
     sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.005)
     axes.axvline(median1, color='red', linestyle='--', label=f'ES median: {median1:.2f}')
     axes.axvline(0.91, color='black', linestyle=':', label=f'Wang et al. (2024): 0.91')
     ax_2 = axes.twinx()
     sns.kdeplot(entity_results, ax=ax_2, color=red_line, linewidth=2)
-    #axes.set_title('Entity-level splitting')
     axes.legend()
-    #axes.set_xlabel('Macro F1')
 
     # List 2: Histogram + KDE
     sns.histplot(observation_results, kde=False, ax=axes, stat='count', color=blue_envelope, edgecolor=blue_line, binwidth = 0.005)
     axes.axvline(median2, color='blue', linestyle='--', label=f'OS median: {median2:.2f}')
-    #ax1_2 = axes[1].twinx()
     sns.kdeplot(observation_results, ax=ax_2, color=blue_line, linewidth=2)
     axes.legend()
     axes.set_xlabel ('Macro F1')
@@ -116,8 +110,6 @@ def visualise_population_centroid_differences(prediction_class, dataframe,entity
 
 
 def test_independence_of_entities(dataframe, entity_id, target_column, compositional_columns):
-    #This function was created with the help of ChatGpt
-
     #details for results output
     script_path = os.path.abspath(__file__)
     parent_directory = os.path.dirname(os.path.dirname(script_path))
@@ -142,7 +134,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         ilr_df = pd.DataFrame(ilr_data, columns=[f'ILR{i + 1}' for i in range(ilr_data.shape[1])])
         ilr_df[entity_id] = df[entity_id].values
 
-        #There are many groups containing only 1 zircon. let's keep only those groups with 10 or more data points.
+        #There are many groups containing only 1 zircon. Let's keep only those groups with 10 or more data points.
         filtered_ilr_df = ilr_df[ilr_df.groupby('ENTITY_ID')['ENTITY_ID'].transform('count') >= 10]
 
         # MANOVA
@@ -165,7 +157,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                 'p-value': row['Pr > F']
             })
 
-        #Dataset is not appropriate for pairwise-MANOVA.
+        #Dataset is not appropriate for pairwise-MANOVA (takes days to run).
         #To see if most entities differ from one another, or if only 1 or 2 are causing MANOVA to reject
         #look at differences between centroids in the population.
         visualise_population_centroid_differences(rock_class, filtered_ilr_df,entity_id, ilr_cols, output_directory)
@@ -198,28 +190,16 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                 'Significant': rej,
                 'Eta squared': eta_sq
             })
-            # If significant, perform Tukey's HSD
-            ## Note: I do not perform Tukey because the with the number of groups, it is extremely time-consuming
-            '''if rej:
-                filtered_ilr_df = ilr_df[ilr_df.groupby('ENTITY_ID')['ENTITY_ID'].transform('count') >= 10]
-                tukey = pairwise_tukeyhsd(endog=filtered_ilr_df[col], groups=filtered_ilr_df[entity_id], alpha=0.05)
-                tukey_df = pd.DataFrame(data=tukey.summary().data[1:], columns=tukey.summary().data[0])
-                tukey_df.insert(0, 'Class', deposit_class)
-                tukey_df.insert(1, 'ILR Coordinate', col)
-                all_tukey_results.append(tukey_df)'''
+
         anova_df = pd.DataFrame(all_anova_results)
         all_classes_anova_results.append(anova_df)
 
-        #tukey_df = pd.concat(all_tukey_results, ignore_index=True) if all_tukey_results else pd.DataFrame()
-        #all_classes_tukey_results.append(tukey_df)
     anova_df_final = pd.concat(all_classes_anova_results, ignore_index=True)
     manova_df_final = pd.DataFrame(all_classes_manova_results)
 
-    for df in [anova_df_final,manova_df_final]:#tukey_df_final,
+    for df in [anova_df_final,manova_df_final]:
         df['Class'] = df['Class'].replace({0: 'Subalkaline', 1: 'Alkaline'})
 
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         anova_df_final.to_excel(writer, sheet_name='ANOVA_results', index=False)
-        #tukey_df_final.to_excel(writer, sheet_name='Tukey_results', index=False)
         manova_df_final.to_excel(writer, sheet_name='MANOVA_results', index=False)
-        #manova_pairwise_df_final.to_excel(writer, sheet_name='MANOVA_pairwise', index=False)

@@ -38,7 +38,7 @@ def plot_cv_results(entity_results, observation_results,title):
     # Create subplots
     fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(18 / 2.54, 8 / 2.54))
 
-    ## List 1: Histogram + KDE
+    # List 1: Histogram + KDE
     sns.histplot(entity_results, kde=False, ax=axes, stat='count', color=red_envelope, edgecolor='black',alpha=0.5, binwidth=0.01)
     axes.axvline(median1, color='red', linestyle='--', label=f'ES median = {median1:.2f}')
     axes.axvline(0.91, color='black', linestyle=':', label=f'Wen et al. (2024) = 0.91')
@@ -208,7 +208,6 @@ def safe_closure(row, pseudocount=1e-6):
     return closure(row)
 
 def test_independence_of_entities(dataframe, entity_id, target_column, compositional_columns):
-    #This function was created with the help of ChatGpt
 
     #details for results output
     script_path = os.path.abspath(__file__)
@@ -235,7 +234,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
         ilr_df = pd.DataFrame(ilr_data, columns=[f'ILR{i + 1}' for i in range(ilr_data.shape[1])])
         ilr_df[entity_id] = df[entity_id].values
 
-        # --- MANOVA ---
+        # MANOVA
         ilr_cols = [col for col in ilr_df.columns if col != entity_id]
         formula = f"{' + '.join(ilr_cols)} ~ {entity_id}"
         manova = MANOVA.from_formula(formula, data=ilr_df)
@@ -255,7 +254,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                 'p-value': row['Pr > F']
             })
 
-        # --- MANOVA Pairwise ---
+        # MANOVA Pairwise
         unique_entities = ilr_df[entity_id].unique()
         pairwise_combinations = list(combinations(unique_entities, 2))
         for group1, group2 in pairwise_combinations:
@@ -279,7 +278,7 @@ def test_independence_of_entities(dataframe, entity_id, target_column, compositi
                     'Reject': True if row['Pr > F'] <0.05 else False
                 })
 
-        ## --- ANOVA + Tukey ---
+        #ANOVA + Tukey
         pvals = []
         col_names = []
         eta_squared = []

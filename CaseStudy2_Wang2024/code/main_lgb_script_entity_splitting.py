@@ -306,7 +306,7 @@ def lgb_5fold(X_train,y_train, X_test, valid, train_data, features_slc, entity =
                     log_evaluation(period=100)
                 ]
             )
-            oof_lgb[val_idx] = clf.predict(X_train.iloc[val_idx][features_slc], num_iteration=clf.best_iteration) #predices on the fold's validation data.
+            oof_lgb[val_idx] = clf.predict(X_train.iloc[val_idx][features_slc], num_iteration=clf.best_iteration) #predicts on the fold's validation data.
             predictions_lgb[:, repeat_fold] = clf.predict(X_test[features_slc], num_iteration=clf.best_iteration) #predicts on the hold-out test dataset
             valid_lgb[:, fold_] = clf.predict(valid[features_slc], num_iteration=clf.best_iteration) #predicts on the hold-out validation dataset
             train_lgb[:, fold_] = clf.predict(train_data[features_slc], num_iteration=clf.best_iteration) #predicts on all the train data
